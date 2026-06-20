@@ -17,7 +17,6 @@ echo Dang ep buoc tai va tu dong bat toan bo Extension trong danh sach...
 :: Moi ID duoc cach nhau boi 1 khoang trang (dau cach).
 set "EXT_LIST=ghbmnnjooekpmoecnnnilnnbdlolhkhi lmjegmlicamnimmfhcmpkclmigmmcbeh mnjggcdmjocbbbhaepdhchncahnbgone lhobafahddgcelffkeicbaginigeejlf hnojoemndpdjofcdaonbefcfecpjfflh blpfhbolaobkkaalciociiglbefpglaf eimadpbcbfnmbkopoojfekhnkhdbieeh lmilalhkkdhfieeienjbiicclobibjao oifijhaokejakekmnjmphonojcfkpbbh jnofiabkigekemighcdaejlpgdhmbaog micdllihgoppmejpecmkilggmaagfdmb ddkjiahejlhfcafbddmgiahcphecmpfh"
 
-
 set /a count=1
 for %%i in (%EXT_LIST%) do (
     echo - Dang cau hinh de tu dong bat ID: %%i
