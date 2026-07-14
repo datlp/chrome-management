@@ -32,6 +32,7 @@ echo SponsorBlock for YouTube - Skip Sponsorships & set "EXT_LIST=!EXT_LIST! mnj
 echo Tab Copy & set "EXT_LIST=!EXT_LIST! micdllihgoppmejpecmkilggmaagfdmb"
 echo TimeTags for YouTube & set "EXT_LIST=!EXT_LIST! hpbmedimnlknflpbgfbllklgelbnelef"
 echo uBlock Origin Lite & set "EXT_LIST=!EXT_LIST! ddkjiahejlhfcafbddmgiahcphecmpfh"
+echo Immersive Translate & set "EXT_LIST=!EXT_LIST! bpoadfkcbjbfhfodiogcnhhhpibjhbnh"
 
 
 set /a count=1
