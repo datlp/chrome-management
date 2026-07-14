@@ -49,3 +49,44 @@ Sau khi PyInstaller chạy hoàn tất thành công:
    - Đường dẫn: `dist/chrome_profiles.exe`
 2. Bạn có thể copy file `chrome_profiles.exe` này đi bất cứ máy tính Windows nào khác để chạy trực tiếp.
 3. Các thư mục trung gian như `build/` và file `chrome_profiles.spec` có thể được xóa đi nếu không dùng tới.
+
+---
+
+## Hướng dẫn tạo Release trên GitHub và tải lên file .exe
+
+Bạn có thể đưa file `.exe` đã build lên mục **Releases** của GitHub bằng 2 cách dưới đây:
+
+### Cách 1: Sử dụng GitHub CLI (`gh`) (Khuyên dùng - Nhanh nhất)
+
+Nếu máy của bạn đã cài đặt [GitHub CLI](https://cli.github.com/), bạn có thể thực hiện tạo release và tải file lên trực tiếp từ dòng lệnh:
+
+1. **Đăng nhập vào GitHub CLI** (nếu chưa):
+   ```bash
+   gh auth login
+   ```
+2. **Tạo Release và đính kèm file `.exe`**:
+   ```bash
+   gh release create v1.0.0 dist/chrome_profiles.exe --title "Release v1.0.0" --notes "Phiên bản đầu tiên của Chrome Profiles Manager"
+   ```
+   *(Thay đổi `v1.0.0` bằng tag/phiên bản thực tế của bạn).*
+
+---
+
+### Cách 2: Sử dụng Giao diện Web của GitHub
+
+Nếu không sử dụng GitHub CLI, bạn thực hiện thủ công như sau:
+
+1. **Tạo và đẩy Tag git lên GitHub**:
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+2. **Tạo Release trên Web**:
+   - Truy cập vào repository của bạn trên GitHub.
+   - Nhấp vào mục **Releases** ở thanh bên phải (Sidebar) -> Chọn **Draft a new release**.
+   - Chọn tag `v1.0.0` bạn vừa push lên.
+   - Điền tiêu đề và mô tả cho bản phát hành này.
+3. **Đính kèm file `.exe`**:
+   - Kéo thả file `chrome_profiles.exe` từ thư mục `dist/` vào khu vực **Attach binaries by dropping them here or selecting them**.
+   - Nhấn **Publish release** để hoàn tất.
+
