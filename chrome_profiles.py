@@ -263,49 +263,53 @@ class ChromeProfileManagerApp:
         self.ext_pane.pack(fill="both", expand=True)
         
         # Header
-        ext_header_lbl = ttk.Label(self.ext_pane, text="QUẢN LÝ CHROMIUM EXTENSIONS", style="Header.TLabel")
-        ext_header_lbl.pack(pady=(0, 15), anchor="w")
+        ext_header_title_lbl = ttk.Label(self.ext_pane, text="QUẢN LÝ CHROMIUM EXTENSIONS", style="Header.TLabel")
+        ext_header_title_lbl.pack(pady=(0, 15), anchor="w")
         
-        # Grid frame container to manage responsive layout of Treeview & Form
-        self.ext_grid_frame = ttk.Frame(self.ext_pane)
-        self.ext_grid_frame.pack(fill="both", expand=True)
+        # Treeview Frame occupying full width
+        self.tree_frame = ttk.Frame(self.ext_pane, style="Card.TFrame", padding=15)
+        self.tree_frame.pack(fill="both", expand=True)
         
-        # Left/Top: Treeview Frame
-        self.tree_frame = ttk.Frame(self.ext_grid_frame, style="Card.TFrame", padding=10)
+        # Action Header Bar for Extensions
+        self.ext_header_frame = ttk.Frame(self.tree_frame)
+        self.ext_header_frame.pack(fill="x", pady=(0, 10))
         
-        # Title of Tab 2 Table
-        ttk.Label(self.tree_frame, text="Danh sách Extensions:", style="TLabel", font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0, 10))
+        ttk.Label(self.ext_header_frame, text="Danh sách Extensions:", style="TLabel", font=("Segoe UI", 11, "bold")).pack(side="left", anchor="w")
         
-        self.tree = ttk.Treeview(self.tree_frame, columns=("Name", "ID"), show="headings", style="Treeview")
+        self.btn_ext_run = tk.Button(self.ext_header_frame, text="🚀 Chạy Script (Admin)", bg=self.accent_color, fg="#ffffff", 
+                                     activebackground=self.accent_hover, activeforeground="#ffffff", relief="flat", bd=0, 
+                                     font=("Segoe UI", 9, "bold"), padx=12, pady=4, command=self.run_extension_script)
+        self.btn_ext_run.pack(side="right", anchor="e")
+        
+        self.btn_ext_export = ttk.Button(self.ext_header_frame, text="Export CSV", style="Normal.TButton", width=12, command=self.export_extensions_csv)
+        self.btn_ext_export.pack(side="right", anchor="e", padx=(0, 6))
+        
+        self.btn_ext_import = ttk.Button(self.ext_header_frame, text="Import CSV", style="Normal.TButton", width=12, command=self.import_extensions_csv)
+        self.btn_ext_import.pack(side="right", anchor="e", padx=(0, 6))
+        
+        # Extensions Table
+        self.tree = ttk.Treeview(self.tree_frame, columns=("Name", "ID"), show="headings", style="Treeview", selectmode="extended")
         self.tree.heading("Name", text="Tên Extension", command=lambda: self.sort_treeview(self.tree, "Name", False))
         self.tree.heading("ID", text="Extension ID", command=lambda: self.sort_treeview(self.tree, "ID", False))
         self.tree.column("Name", width=250, anchor="w")
-        self.tree.column("ID", width=250, anchor="w")
+        self.tree.column("ID", width=350, anchor="w")
         
         self.tree_scroll = ttk.Scrollbar(self.tree_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.tree_scroll.set)
-        self.tree.bind("<<TreeviewSelect>>", self.on_treeview_select)
         
-        # Right/Bottom: Form Frame
-        self.form_frame = ttk.Frame(self.ext_grid_frame, style="Card.TFrame", padding=15)
+        self.tree.pack(side="left", fill="both", expand=True)
+        self.tree_scroll.pack(side="right", fill="y")
         
-        self.lbl_ext_name = ttk.Label(self.form_frame, text="Tên Extension:", style="Card.TLabel")
-        self.ent_ext_name = tk.Entry(self.form_frame, textvariable=self.ext_name_var, bg=self.bg_color, fg=self.text_color, 
-                                     insertbackground=self.text_color, highlightthickness=1, highlightbackground=self.border_color, 
-                                     highlightcolor=self.accent_color, relief="flat", font=("Segoe UI", 10))
-                                     
-        self.lbl_ext_id = ttk.Label(self.form_frame, text="Extension ID:", style="Card.TLabel")
-        self.ent_ext_id = tk.Entry(self.form_frame, textvariable=self.ext_id_var, bg=self.bg_color, fg=self.text_color, 
-                                   insertbackground=self.text_color, highlightthickness=1, highlightbackground=self.border_color, 
-                                   highlightcolor=self.accent_color, relief="flat", font=("Segoe UI", 10))
-                                   
-        self.btn_ext_add = ttk.Button(self.form_frame, text="Thêm Mới", style="Accent.TButton", command=self.add_extension)
-        self.btn_ext_update = ttk.Button(self.form_frame, text="Cập Nhật", style="Normal.TButton", command=self.update_extension)
-        self.btn_ext_delete = ttk.Button(self.form_frame, text="Xóa", style="Normal.TButton", command=self.delete_extension)
-        self.btn_ext_import = ttk.Button(self.form_frame, text="Import CSV", style="Normal.TButton", command=self.import_extensions_csv)
-        self.btn_ext_export = ttk.Button(self.form_frame, text="Export CSV", style="Normal.TButton", command=self.export_extensions_csv)
-        self.btn_ext_save = tk.Button(self.form_frame, text="LƯU THAY ĐỔI SCRIPT", bg="#28a745", fg="#ffffff", activebackground="#218838", activeforeground="#ffffff", relief="flat", bd=0, font=("Segoe UI", 10, "bold"), command=self.save_extensions_to_bat)
-        self.btn_ext_run = tk.Button(self.form_frame, text="CHẠY SCRIPT (ADMIN)", bg=self.accent_color, fg="#ffffff", activebackground=self.accent_hover, activeforeground="#ffffff", relief="flat", bd=0, font=("Segoe UI", 10, "bold"), command=self.run_extension_script)
+        # Right-click Context Menu
+        self.ext_context_menu = tk.Menu(self.tree, tearoff=0, bg=self.card_color, fg=self.text_color, activebackground=self.accent_color, activeforeground="#ffffff")
+        self.ext_context_menu.add_command(label="Xóa các extension đã chọn", command=self.delete_selected_extensions)
+        
+        # Mouse / Edit bindings
+        self.tree_edit_entry = None
+        self.tree.bind("<Button-1>", self.on_ext_tree_click)
+        self.tree.bind("<ButtonPress-1>", self.on_ext_drag_start, add="+")
+        self.tree.bind("<B1-Motion>", self.on_ext_drag_motion)
+        self.tree.bind("<Button-3>", self.show_ext_context_menu)
         
         # Populate initial treeview list
         self.populate_treeview()
@@ -339,11 +343,8 @@ class ChromeProfileManagerApp:
         
         # Clean up Tab 2 layouts
         self.tree_frame.pack_forget()
-        self.form_frame.pack_forget()
         self.tree.pack_forget()
         self.tree_scroll.pack_forget()
-        for widget in [self.lbl_ext_name, self.ent_ext_name, self.lbl_ext_id, self.ent_ext_id, self.btn_ext_add, self.btn_ext_update, self.btn_ext_delete, self.btn_ext_import, self.btn_ext_export, self.btn_ext_save, self.btn_ext_run]:
-            widget.grid_forget()
 
         if narrow:
             # ==========================================
@@ -356,7 +357,6 @@ class ChromeProfileManagerApp:
             self.config_card.columnconfigure(0, weight=1)
             self.config_card.columnconfigure(1, weight=1)
             self.config_card.columnconfigure(2, weight=0)
-
             
             # Narrow selection controls
             self.lbl_selected_count.pack(side="top", anchor="w", pady=(0, 5))
@@ -373,30 +373,9 @@ class ChromeProfileManagerApp:
             # ==========================================
             # TAB 2: Narrow Layout
             # ==========================================
-            self.tree_frame.pack(side="top", fill="both", expand=True, pady=(0, 10))
-            self.form_frame.pack(side="top", fill="x", expand=False)
-            
+            self.tree_frame.pack(side="top", fill="both", expand=True)
             self.tree.pack(side="left", fill="both", expand=True)
             self.tree_scroll.pack(side="right", fill="y")
-            
-            self.lbl_ext_name.grid(row=0, column=0, sticky="w", pady=2)
-            self.ent_ext_name.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(2, 8))
-            self.lbl_ext_id.grid(row=2, column=0, sticky="w", pady=2)
-            self.ent_ext_id.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(2, 8))
-            
-            self.btn_ext_add.grid(row=4, column=0, sticky="ew", padx=(0, 2), pady=5)
-            self.btn_ext_update.grid(row=4, column=1, sticky="ew", padx=2, pady=5)
-            self.btn_ext_delete.grid(row=4, column=2, sticky="ew", padx=(2, 0), pady=5)
-            
-            self.btn_ext_import.grid(row=5, column=0, sticky="ew", padx=(0, 2), pady=5)
-            self.btn_ext_export.grid(row=5, column=1, columnspan=2, sticky="ew", padx=(2, 0), pady=5)
-            
-            self.btn_ext_save.grid(row=6, column=0, columnspan=3, sticky="ew", pady=5)
-            self.btn_ext_run.grid(row=7, column=0, columnspan=3, sticky="ew", pady=5)
-            
-            self.form_frame.columnconfigure(0, weight=1)
-            self.form_frame.columnconfigure(1, weight=1)
-            self.form_frame.columnconfigure(2, weight=1)
         else:
             # ==========================================
             # TAB 1: Wide Layout
@@ -408,8 +387,6 @@ class ChromeProfileManagerApp:
             self.config_card.columnconfigure(0, weight=0)
             self.config_card.columnconfigure(1, weight=1)
             self.config_card.columnconfigure(2, weight=0)
-
-
             
             # Wide selection controls
             self.lbl_selected_count.pack(side="left", padx=(0, 15))
@@ -427,30 +404,9 @@ class ChromeProfileManagerApp:
             # ==========================================
             # TAB 2: Wide Layout
             # ==========================================
-            self.tree_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
-            self.form_frame.pack(side="right", fill="both", expand=False)
-            
+            self.tree_frame.pack(side="top", fill="both", expand=True)
             self.tree.pack(side="left", fill="both", expand=True)
             self.tree_scroll.pack(side="right", fill="y")
-            
-            self.lbl_ext_name.grid(row=0, column=0, sticky="w", pady=2)
-            self.ent_ext_name.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(2, 10))
-            self.lbl_ext_id.grid(row=2, column=0, sticky="w", pady=2)
-            self.ent_ext_id.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(2, 15))
-            
-            self.btn_ext_add.grid(row=4, column=0, sticky="ew", padx=(0, 2), pady=5)
-            self.btn_ext_update.grid(row=4, column=1, sticky="ew", padx=(2, 0), pady=5)
-            self.btn_ext_delete.grid(row=5, column=0, columnspan=2, sticky="ew", pady=5)
-            
-            self.btn_ext_import.grid(row=6, column=0, sticky="ew", padx=(0, 2), pady=5)
-            self.btn_ext_export.grid(row=6, column=1, sticky="ew", padx=(2, 0), pady=5)
-            
-            self.btn_ext_save.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(15, 5))
-            self.btn_ext_run.grid(row=8, column=0, columnspan=2, sticky="ew", pady=5)
-            
-            self.form_frame.columnconfigure(0, weight=1)
-            self.form_frame.columnconfigure(1, weight=1)
-            self.form_frame.columnconfigure(2, weight=0)
 
     # ==========================================
     # EXTENSIONS CRUD METHODS
@@ -459,71 +415,152 @@ class ChromeProfileManagerApp:
         # Clear existing items
         for item in self.tree.get_children():
             self.tree.delete(item)
-        # Populate
-        for ext in self.extensions:
-            self.tree.insert("", "end", values=(ext["name"], ext["id"]))
             
-    def on_treeview_select(self, event):
-        selected = self.tree.selection()
-        if selected:
-            item = selected[0]
-            values = self.tree.item(item, "values")
-            self.ext_name_var.set(values[0])
-            self.ext_id_var.set(values[1])
-            # Find index in list
-            for idx, ext in enumerate(self.extensions):
-                if ext["id"] == values[1]:
-                    self.selected_ext_idx = idx
-                    break
+        # 1. Pinned row at index 0 for adding new extensions
+        self.tree.insert("", "end", iid="__add_row__", values=("+ Thêm mới...", "Nhập ID Extension..."))
+        
+        # 2. Populate existing extensions
+        for idx, ext in enumerate(self.extensions):
+            self.tree.insert("", "end", iid=f"ext_{idx}", values=(ext["name"], ext["id"]))
+            
+    def on_ext_tree_click(self, event):
+        if self.tree_edit_entry:
+            self.tree_edit_entry.destroy()
+            self.tree_edit_entry = None
+            
+        region = self.tree.identify("region", event.x, event.y)
+        if region != "cell":
+            return
+            
+        item = self.tree.identify_row(event.y)
+        column = self.tree.identify_column(event.x)
+        
+        bbox = self.tree.bbox(item, column)
+        if not bbox:
+            return
+            
+        x, y, w, h = bbox
+        val = self.tree.set(item, column)
+        
+        if item == "__add_row__" and val in ("+ Thêm mới...", "Nhập ID Extension..."):
+            val = ""
+            
+        entry = tk.Entry(self.tree, bg=self.bg_color, fg=self.text_color, insertbackground=self.text_color, relief="flat", font=("Segoe UI", 10))
+        entry.insert(0, val)
+        entry.select_range(0, tk.END)
+        entry.place(x=x, y=y, width=w, height=h)
+        entry.focus_set()
+        
+        self.tree_edit_entry = entry
+        
+        entry.bind("<Return>", lambda e: self.save_cell_edit(item, column, entry.get()))
+        entry.bind("<FocusOut>", lambda e: self.save_cell_edit(item, column, entry.get()))
+        
+    def save_cell_edit(self, item, column, new_val):
+        if self.tree_edit_entry:
+            self.tree_edit_entry.destroy()
+            self.tree_edit_entry = None
+            
+        new_val = new_val.strip()
+        
+        if item == "__add_row__":
+            current_name = self.tree.set(item, "Name")
+            current_id = self.tree.set(item, "ID")
+            
+            if column == "#1":
+                if new_val and new_val != "+ Thêm mới...":
+                    self.tree.set(item, "Name", new_val)
+                    current_name = new_val
+            else:
+                if new_val and new_val != "Nhập ID Extension...":
+                    self.tree.set(item, "ID", new_val)
+                    current_id = new_val
+                    
+            if (current_name and current_name != "+ Thêm mới..." and 
+                current_id and current_id != "Nhập ID Extension..."):
+                self.extensions.append({"name": current_name, "id": current_id})
+                self.populate_treeview()
+                self.debounce_save_extensions()
         else:
-            self.selected_ext_idx = None
-            
-    def add_extension(self):
-        name = self.ext_name_var.get().strip()
-        ext_id = self.ext_id_var.get().strip()
-        if not name or not ext_id:
-            messagebox.showwarning("Cảnh báo", "Vui lòng điền đầy đủ Tên và ID Extension.")
+            if item.startswith("ext_"):
+                try:
+                    idx = int(item.split("_")[1])
+                    if 0 <= idx < len(self.extensions):
+                        if column == "#1":
+                            self.extensions[idx]["name"] = new_val
+                        else:
+                            self.extensions[idx]["id"] = new_val
+                        self.tree.set(item, column, new_val)
+                        self.debounce_save_extensions()
+                except Exception as e:
+                    print(f"Error editing cell: {e}")
+                    
+    def debounce_save_extensions(self):
+        if hasattr(self, 'ext_save_timer') and self.ext_save_timer:
+            self.root.after_cancel(self.ext_save_timer)
+        self.ext_save_timer = self.root.after(1000, lambda: self.save_extensions_to_bat(silent=True))
+
+    def on_ext_drag_start(self, event):
+        item = self.tree.identify_row(event.y)
+        if item:
+            if item == "__add_row__":
+                self.ext_drag_start_item = None
+            else:
+                self.ext_drag_start_item = item
+
+    def on_ext_drag_motion(self, event):
+        item = self.tree.identify_row(event.y)
+        if item and item != "__add_row__" and hasattr(self, 'ext_drag_start_item') and self.ext_drag_start_item:
+            children = [c for c in self.tree.get_children("") if c != "__add_row__"]
+            try:
+                start_idx = children.index(self.ext_drag_start_item)
+                end_idx = children.index(item)
+                
+                low = min(start_idx, end_idx)
+                high = max(start_idx, end_idx)
+                
+                to_select = children[low:high+1]
+                self.tree.selection_set(to_select)
+            except ValueError:
+                pass
+
+    def show_ext_context_menu(self, event):
+        item_under_mouse = self.tree.identify_row(event.y)
+        if item_under_mouse and item_under_mouse != "__add_row__":
+            current_selection = self.tree.selection()
+            if item_under_mouse not in current_selection:
+                self.tree.selection_set(item_under_mouse)
+            try:
+                self.ext_context_menu.tk_popup(event.x_root, event.y_root)
+            finally:
+                self.ext_context_menu.grab_release()
+
+    def delete_selected_extensions(self):
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showwarning("Cảnh báo", "Vui lòng chọn ít nhất một extension để xóa.")
             return
             
-        # Check if ID already exists
-        if any(ext["id"] == ext_id for ext in self.extensions):
-            messagebox.showwarning("Cảnh báo", f"Extension ID '{ext_id}' đã tồn tại.")
+        confirm = messagebox.askyesno("Xác nhận xóa", f"Bạn có chắc chắn muốn xóa {len(selected_items)} extension đã chọn không?")
+        if not confirm:
             return
             
-        self.extensions.append({"name": name, "id": ext_id})
+        indices_to_delete = []
+        for item in selected_items:
+            if item.startswith("ext_"):
+                try:
+                    idx = int(item.split("_")[1])
+                    indices_to_delete.append(idx)
+                except ValueError:
+                    pass
+                    
+        indices_to_delete.sort(reverse=True)
+        for idx in indices_to_delete:
+            if 0 <= idx < len(self.extensions):
+                del self.extensions[idx]
+                
         self.populate_treeview()
-        self.clear_ext_fields()
-        
-    def update_extension(self):
-        if self.selected_ext_idx is None:
-            messagebox.showwarning("Cảnh báo", "Vui lòng chọn Extension từ bảng để cập nhật.")
-            return
-            
-        name = self.ext_name_var.get().strip()
-        ext_id = self.ext_id_var.get().strip()
-        if not name or not ext_id:
-            messagebox.showwarning("Cảnh báo", "Vui lòng điền đầy đủ Tên và ID Extension.")
-            return
-            
-        # Update
-        self.extensions[self.selected_ext_idx] = {"name": name, "id": ext_id}
-        self.populate_treeview()
-        self.clear_ext_fields()
-        
-    def delete_extension(self):
-        if self.selected_ext_idx is None:
-            messagebox.showwarning("Cảnh báo", "Vui lòng chọn Extension từ bảng để xóa.")
-            return
-            
-        del self.extensions[self.selected_ext_idx]
-        self.populate_treeview()
-        self.clear_ext_fields()
-        
-    def clear_ext_fields(self):
-        self.ext_name_var.set("")
-        self.ext_id_var.set("")
-        self.selected_ext_idx = None
-        self.tree.selection_remove(self.tree.selection())
+        self.debounce_save_extensions()
 
     def load_extensions_from_bat(self):
         self.extensions = []
@@ -568,7 +605,7 @@ class ChromeProfileManagerApp:
         except Exception as e:
             print(f"Error loading extensions: {e}")
 
-    def save_extensions_to_bat(self):
+    def save_extensions_to_bat(self, silent=False):
         try:
             os.makedirs(os.path.dirname(BAT_FILE_PATH), exist_ok=True)
             with open(BAT_FILE_PATH, "w", encoding="utf-8") as f:
@@ -583,10 +620,12 @@ class ChromeProfileManagerApp:
                 
                 # Write footer
                 f.writelines(self.bat_footer)
-            messagebox.showinfo("Thành công", "Đã lưu thay đổi vào file script .bat thành công.")
+            if not silent:
+                messagebox.showinfo("Thành công", "Đã lưu thay đổi vào file script .bat thành công.")
             return True
         except Exception as e:
-            messagebox.showerror("Lỗi", f"Không thể lưu file: {e}")
+            if not silent:
+                messagebox.showerror("Lỗi", f"Không thể lưu file: {e}")
             return False
 
     def run_extension_script(self):
@@ -664,6 +703,7 @@ class ChromeProfileManagerApp:
                 messagebox.showinfo("Thành công", f"Đã thay thế toàn bộ danh sách bằng {len(imported_exts)} Extensions từ file CSV.")
                 
             self.populate_treeview()
+            self.debounce_save_extensions()
         except Exception as e:
             messagebox.showerror("Lỗi", f"Không thể import file CSV: {e}")
 
