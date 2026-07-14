@@ -193,13 +193,6 @@ class ChromeProfileManagerApp:
                             command=lambda n=num: self.simultaneous_var.set(n))
             btn.pack(side="left", padx=(0, 4))
         
-        # Chrome path selection
-        self.chrome_lbl = ttk.Label(self.config_card, text="Đường dẫn Chrome:", style="Card.TLabel")
-        self.chrome_entry = tk.Entry(self.config_card, textvariable=self.chrome_path_var, bg=self.bg_color, fg=self.text_color, 
-                                insertbackground=self.text_color, highlightthickness=1, highlightbackground=self.border_color, 
-                                highlightcolor=self.accent_color, relief="flat", font=("Segoe UI", 9))
-        self.browse_btn = ttk.Button(self.config_card, text="Chọn file", style="Normal.TButton", command=self.browse_chrome_path)
-        
         # List Header Frame
         self.header_frame = ttk.Frame(self.main_container)
         self.header_frame.pack(fill="x", pady=(5, 5))
@@ -209,6 +202,9 @@ class ChromeProfileManagerApp:
         
         self.refresh_btn = ttk.Button(self.header_frame, text="⟳ Làm mới", style="Accent.TButton", width=12, command=self.refresh_profile_list)
         self.refresh_btn.pack(side="right", anchor="e")
+        
+        self.chrome_path_btn = ttk.Button(self.header_frame, text="⚙ Chrome", style="Normal.TButton", width=10, command=self.browse_chrome_path)
+        self.chrome_path_btn.pack(side="right", anchor="e", padx=(0, 6))
         
         # Scrollable List Frame (Treeview table)
         list_outer_frame = ttk.Frame(self.main_container, style="Card.TFrame")
@@ -325,12 +321,10 @@ class ChromeProfileManagerApp:
 
     def apply_responsive_layout(self, narrow):
         # Clean up Tab 1 configuration card grid settings
-        for widget in [self.web_lbl, self.web_entry, self.preset_frame, self.sim_frame, self.chrome_lbl, self.chrome_entry, self.browse_btn]:
+        for widget in [self.web_lbl, self.web_entry, self.preset_frame, self.sim_frame]:
             widget.grid_forget()
         for widget in [self.sim_lbl, self.sim_entry, self.sim_preset_lbl, self.sim_preset_buttons_frame]:
             widget.grid_forget()
-        
-
         
         # Clean up Tab 1 selection controls
         for widget in [self.lbl_selected_count, self.btn_select_all, self.btn_deselect, self.select_n_frame, self.btn_open_selected]:
@@ -354,9 +348,6 @@ class ChromeProfileManagerApp:
             self.web_entry.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(2, 5))
             self.preset_frame.grid(row=2, column=0, columnspan=3, sticky="w", pady=(2, 8))
             self.sim_frame.grid(row=3, column=0, columnspan=3, sticky="ew", pady=5)
-            self.chrome_lbl.grid(row=4, column=0, columnspan=3, sticky="w", pady=(8, 2))
-            self.chrome_entry.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(2, 8), padx=(0, 5))
-            self.browse_btn.grid(row=5, column=2, sticky="e", pady=(2, 8))
             
             self.config_card.columnconfigure(0, weight=1)
             self.config_card.columnconfigure(1, weight=1)
@@ -417,9 +408,6 @@ class ChromeProfileManagerApp:
             self.web_entry.grid(row=0, column=1, columnspan=2, sticky="ew", pady=5, padx=(10, 0))
             self.preset_frame.grid(row=1, column=1, columnspan=2, sticky="w", pady=(2, 8), padx=(10, 0))
             self.sim_frame.grid(row=2, column=0, columnspan=3, sticky="ew", pady=5)
-            self.chrome_lbl.grid(row=3, column=0, sticky="w", pady=8)
-            self.chrome_entry.grid(row=3, column=1, sticky="ew", pady=8, padx=(10, 5))
-            self.browse_btn.grid(row=3, column=2, sticky="e", pady=8)
             
             self.config_card.columnconfigure(0, weight=0)
             self.config_card.columnconfigure(1, weight=1)
@@ -733,6 +721,7 @@ class ChromeProfileManagerApp:
         )
         if file_path:
             self.chrome_path_var.set(file_path)
+            self.save_config()
 
     def get_actual_profiles(self):
         user_data_path = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data")
