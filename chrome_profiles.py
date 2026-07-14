@@ -17,7 +17,7 @@ class ChromeProfileManagerApp:
         self.root = root
         self.root.title("Chrome Profiles Manager")
         self.root.geometry("680x750")
-        self.root.minsize(600, 500)
+        self.root.minsize(450, 500)
         
         # Color palette (Modern Dark Mode)
         self.bg_color = "#121212"
@@ -27,6 +27,7 @@ class ChromeProfileManagerApp:
         self.text_color = "#eeeeee"
         self.text_muted = "#aaaaaa"
         self.border_color = "#393e46"
+        self.narrow_mode = None
         
         self.root.configure(bg=self.bg_color)
         
@@ -124,96 +125,76 @@ class ChromeProfileManagerApp:
 
     def build_ui(self):
         # Main container with padding
-        main_container = ttk.Frame(self.root, padding=20)
-        main_container.pack(fill="both", expand=True)
+        self.main_container = ttk.Frame(self.root, padding=20)
+        self.main_container.pack(fill="both", expand=True)
         
         # Header
-        header_lbl = ttk.Label(main_container, text="CHROME PROFILES MANAGER", style="Header.TLabel")
-        header_lbl.pack(pady=(0, 15), anchor="w")
+        self.header_lbl = ttk.Label(self.main_container, text="CHROME PROFILES MANAGER", style="Header.TLabel")
+        self.header_lbl.pack(pady=(0, 15), anchor="w")
         
         # Configuration Card
-        config_card = ttk.Frame(main_container, style="Card.TFrame", padding=15)
-        config_card.pack(fill="x", pady=(0, 15))
+        self.config_card = ttk.Frame(self.main_container, style="Card.TFrame", padding=15)
+        self.config_card.pack(fill="x", pady=(0, 15))
         
         # Website Selection
-        ttk.Label(config_card, text="Trang Web (URL):", style="Card.TLabel").grid(row=0, column=0, sticky="w", pady=5)
-        web_entry = tk.Entry(config_card, textvariable=self.website_var, bg=self.bg_color, fg=self.text_color, 
+        self.web_lbl = ttk.Label(self.config_card, text="Trang Web (URL):", style="Card.TLabel")
+        self.web_entry = tk.Entry(self.config_card, textvariable=self.website_var, bg=self.bg_color, fg=self.text_color, 
                              insertbackground=self.text_color, highlightthickness=1, highlightbackground=self.border_color, 
                              highlightcolor=self.accent_color, relief="flat", font=("Segoe UI", 10))
-        web_entry.grid(row=0, column=1, columnspan=2, sticky="ew", pady=5, padx=(10, 0))
         
         # Preset website buttons
-        preset_frame = ttk.Frame(config_card, style="Card.TFrame")
-        preset_frame.grid(row=1, column=1, columnspan=2, sticky="w", pady=(2, 8), padx=(10, 0))
-        
+        self.preset_frame = ttk.Frame(self.config_card, style="Card.TFrame")
         presets = ["google.com", "facebook.com", "youtube.com", "gmail.com"]
         for p in presets:
-            btn = tk.Button(preset_frame, text=p, bg=self.border_color, fg=self.text_muted, activebackground=self.accent_color,
+            btn = tk.Button(self.preset_frame, text=p, bg=self.border_color, fg=self.text_muted, activebackground=self.accent_color,
                             activeforeground="#ffffff", relief="flat", bd=0, font=("Segoe UI", 8), padx=6, pady=2,
                             command=lambda url=p: self.set_website_preset(url))
             btn.pack(side="left", padx=(0, 5))
             
         # Range Frame
-        range_frame = ttk.Frame(config_card, style="Card.TFrame")
-        range_frame.grid(row=2, column=0, columnspan=3, sticky="ew", pady=5)
-        
-        ttk.Label(range_frame, text="Profile bắt đầu:", style="Card.TLabel").pack(side="left")
-        start_entry = tk.Entry(range_frame, textvariable=self.start_profile_var, width=6, bg=self.bg_color, fg=self.text_color, 
+        self.range_frame = ttk.Frame(self.config_card, style="Card.TFrame")
+        self.range_lbl1 = ttk.Label(self.range_frame, text="Profile bắt đầu:", style="Card.TLabel")
+        self.start_entry = tk.Entry(self.range_frame, textvariable=self.start_profile_var, width=6, bg=self.bg_color, fg=self.text_color, 
                                insertbackground=self.text_color, highlightthickness=1, highlightbackground=self.border_color, 
                                highlightcolor=self.accent_color, relief="flat", font=("Segoe UI", 10), justify="center")
-        start_entry.pack(side="left", padx=(5, 15))
-
-        ttk.Label(range_frame, text="Profile kết thúc:", style="Card.TLabel").pack(side="left")
-        end_entry = tk.Entry(range_frame, textvariable=self.end_profile_var, width=6, bg=self.bg_color, fg=self.text_color, 
+        self.range_lbl2 = ttk.Label(self.range_frame, text="Profile kết thúc:", style="Card.TLabel")
+        self.end_entry = tk.Entry(self.range_frame, textvariable=self.end_profile_var, width=6, bg=self.bg_color, fg=self.text_color, 
                              insertbackground=self.text_color, highlightthickness=1, highlightbackground=self.border_color, 
                              highlightcolor=self.accent_color, relief="flat", font=("Segoe UI", 10), justify="center")
-        end_entry.pack(side="left", padx=(5, 15))
 
-        # Sim count Frame (row 3)
-        sim_frame = ttk.Frame(config_card, style="Card.TFrame")
-        sim_frame.grid(row=3, column=0, columnspan=3, sticky="ew", pady=5)
-        
-        ttk.Label(sim_frame, text="Số lượng cùng lúc:", style="Card.TLabel").pack(side="left")
-        sim_entry = tk.Entry(sim_frame, textvariable=self.simultaneous_var, width=6, bg=self.bg_color, fg=self.text_color, 
+        # Sim count Frame
+        self.sim_frame = ttk.Frame(self.config_card, style="Card.TFrame")
+        self.sim_lbl = ttk.Label(self.sim_frame, text="Số lượng cùng lúc:", style="Card.TLabel")
+        self.sim_entry = tk.Entry(self.sim_frame, textvariable=self.simultaneous_var, width=6, bg=self.bg_color, fg=self.text_color, 
                              insertbackground=self.text_color, highlightthickness=1, highlightbackground=self.border_color, 
                              highlightcolor=self.accent_color, relief="flat", font=("Segoe UI", 10), justify="center")
-        sim_entry.pack(side="left", padx=(5, 15))
-        
-        # profileNum presets
-        ttk.Label(sim_frame, text="Mặc định:", style="Card.TLabel").pack(side="left", padx=(0, 5))
+        self.sim_preset_lbl = ttk.Label(self.sim_frame, text="Mặc định:", style="Card.TLabel")
+        self.sim_preset_buttons_frame = ttk.Frame(self.sim_frame, style="Card.TFrame")
         for num in [2, 4, 6, 8, 10, 12]:
-            btn = tk.Button(sim_frame, text=str(num), bg=self.border_color, fg=self.text_muted, activebackground=self.accent_color,
+            btn = tk.Button(self.sim_preset_buttons_frame, text=str(num), bg=self.border_color, fg=self.text_muted, activebackground=self.accent_color,
                             activeforeground="#ffffff", relief="flat", bd=0, font=("Segoe UI", 8, "bold"), padx=8, pady=2,
                             command=lambda n=num: self.simultaneous_var.set(n))
             btn.pack(side="left", padx=(0, 4))
         
-        # Chrome path selection (row 4)
-        ttk.Label(config_card, text="Đường dẫn Chrome:", style="Card.TLabel").grid(row=4, column=0, sticky="w", pady=8)
-        chrome_entry = tk.Entry(config_card, textvariable=self.chrome_path_var, bg=self.bg_color, fg=self.text_color, 
+        # Chrome path selection
+        self.chrome_lbl = ttk.Label(self.config_card, text="Đường dẫn Chrome:", style="Card.TLabel")
+        self.chrome_entry = tk.Entry(self.config_card, textvariable=self.chrome_path_var, bg=self.bg_color, fg=self.text_color, 
                                 insertbackground=self.text_color, highlightthickness=1, highlightbackground=self.border_color, 
                                 highlightcolor=self.accent_color, relief="flat", font=("Segoe UI", 9))
-        chrome_entry.grid(row=4, column=1, sticky="ew", pady=8, padx=(10, 5))
-        
-        browse_btn = ttk.Button(config_card, text="Chọn file", style="Normal.TButton", command=self.browse_chrome_path)
-        browse_btn.grid(row=4, column=2, sticky="e", pady=8)
-        
-        config_card.columnconfigure(1, weight=1)
+        self.browse_btn = ttk.Button(self.config_card, text="Chọn file", style="Normal.TButton", command=self.browse_chrome_path)
         
         # Generate Action Buttons Frame
-        action_btn_frame = ttk.Frame(main_container)
-        action_btn_frame.pack(fill="x", pady=(0, 15))
+        self.action_btn_frame = ttk.Frame(self.main_container)
+        self.action_btn_frame.pack(fill="x", pady=(0, 15))
         
-        gen_btn = ttk.Button(action_btn_frame, text="TẠO NHÓM THEO SỐ THỨ TỰ", style="Accent.TButton", command=self.generate_profile_list)
-        gen_btn.pack(side="left", fill="x", expand=True, padx=(0, 5))
-        
-        scan_btn = ttk.Button(action_btn_frame, text="QUÉT PROFILE THỰC TẾ (CÓ EMAIL)", style="Accent.TButton", command=self.generate_actual_profile_list)
-        scan_btn.pack(side="right", fill="x", expand=True, padx=(5, 0))
+        self.gen_btn = ttk.Button(self.action_btn_frame, text="TẠO NHÓM THEO SỐ THỨ TỰ", style="Accent.TButton", command=self.generate_profile_list)
+        self.scan_btn = ttk.Button(self.action_btn_frame, text="QUÉT PROFILE THỰC TẾ (CÓ EMAIL)", style="Accent.TButton", command=self.generate_actual_profile_list)
         
         # List Container Header
-        ttk.Label(main_container, text="Danh sách nhóm Profile:", style="TLabel", font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(5, 5))
+        ttk.Label(self.main_container, text="Danh sách nhóm Profile:", style="TLabel", font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(5, 5))
         
         # Scrollable List Frame
-        list_outer_frame = ttk.Frame(main_container, style="Card.TFrame")
+        list_outer_frame = ttk.Frame(self.main_container, style="Card.TFrame")
         list_outer_frame.pack(fill="both", expand=True)
         
         self.canvas = tk.Canvas(list_outer_frame, bg=self.card_color, highlightthickness=0)
@@ -227,7 +208,6 @@ class ChromeProfileManagerApp:
         
         self.canvas_frame_id = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         self.canvas.configure(yscrollcommand=scrollbar.set)
-        
         self.canvas.bind('<Configure>', self._on_canvas_configure)
         
         # Bind mousewheel scroll
@@ -236,8 +216,95 @@ class ChromeProfileManagerApp:
         self.canvas.pack(side="left", fill="both", expand=True, padx=5, pady=5)
         scrollbar.pack(side="right", fill="y")
         
+        # Bind root resize to responsive adjustment
+        self.root.bind("<Configure>", self.on_window_resize)
+        
+        # Initialize default responsive layout
+        self.apply_responsive_layout(narrow=False)
+        
         # Generate list automatically on startup
         self.generate_profile_list()
+
+    def on_window_resize(self, event):
+        if event.widget == self.root:
+            is_narrow = event.width < 580
+            if self.narrow_mode != is_narrow:
+                self.narrow_mode = is_narrow
+                self.apply_responsive_layout(narrow=is_narrow)
+
+    def apply_responsive_layout(self, narrow):
+        # Clean up grid settings
+        for widget in [self.web_lbl, self.web_entry, self.preset_frame, self.range_frame, self.sim_frame, self.chrome_lbl, self.chrome_entry, self.browse_btn]:
+            widget.grid_forget()
+        for widget in [self.range_lbl1, self.start_entry, self.range_lbl2, self.end_entry]:
+            widget.grid_forget()
+        for widget in [self.sim_lbl, self.sim_entry, self.sim_preset_lbl, self.sim_preset_buttons_frame]:
+            widget.grid_forget()
+        
+        self.gen_btn.pack_forget()
+        self.scan_btn.pack_forget()
+
+        if narrow:
+            # Narrow configuration layout
+            self.web_lbl.grid(row=0, column=0, columnspan=3, sticky="w", pady=(5, 2))
+            self.web_entry.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(2, 5))
+            self.preset_frame.grid(row=2, column=0, columnspan=3, sticky="w", pady=(2, 8))
+            self.range_frame.grid(row=3, column=0, columnspan=3, sticky="ew", pady=5)
+            self.sim_frame.grid(row=4, column=0, columnspan=3, sticky="ew", pady=5)
+            self.chrome_lbl.grid(row=5, column=0, columnspan=3, sticky="w", pady=(8, 2))
+            self.chrome_entry.grid(row=6, column=0, columnspan=2, sticky="ew", pady=(2, 8), padx=(0, 5))
+            self.browse_btn.grid(row=6, column=2, sticky="e", pady=(2, 8))
+            
+            self.config_card.columnconfigure(0, weight=1)
+            self.config_card.columnconfigure(1, weight=1)
+            self.config_card.columnconfigure(2, weight=0)
+
+            # Narrow Range frame grid
+            self.range_lbl1.grid(row=0, column=0, sticky="w", pady=2)
+            self.start_entry.grid(row=0, column=1, sticky="w", padx=(5, 0), pady=2)
+            self.range_lbl2.grid(row=1, column=0, sticky="w", pady=2)
+            self.end_entry.grid(row=1, column=1, sticky="w", padx=(5, 0), pady=2)
+
+            # Narrow Sim frame grid
+            self.sim_lbl.grid(row=0, column=0, sticky="w", pady=2)
+            self.sim_entry.grid(row=0, column=1, sticky="w", padx=(5, 0), pady=2)
+            self.sim_preset_lbl.grid(row=1, column=0, sticky="w", pady=2)
+            self.sim_preset_buttons_frame.grid(row=1, column=1, sticky="w", padx=(5, 0), pady=2)
+
+            # Narrow action buttons stack
+            self.gen_btn.pack(side="top", fill="x", pady=(0, 5))
+            self.scan_btn.pack(side="top", fill="x", pady=(5, 0))
+        else:
+            # Wide configuration layout
+            self.web_lbl.grid(row=0, column=0, sticky="w", pady=5)
+            self.web_entry.grid(row=0, column=1, columnspan=2, sticky="ew", pady=5, padx=(10, 0))
+            self.preset_frame.grid(row=1, column=1, columnspan=2, sticky="w", pady=(2, 8), padx=(10, 0))
+            self.range_frame.grid(row=2, column=0, columnspan=3, sticky="ew", pady=5)
+            self.sim_frame.grid(row=3, column=0, columnspan=3, sticky="ew", pady=5)
+            self.chrome_lbl.grid(row=4, column=0, sticky="w", pady=8)
+            self.chrome_entry.grid(row=4, column=1, sticky="ew", pady=8, padx=(10, 5))
+            self.browse_btn.grid(row=4, column=2, sticky="e", pady=8)
+            
+            self.config_card.columnconfigure(0, weight=0)
+            self.config_card.columnconfigure(1, weight=1)
+            self.config_card.columnconfigure(2, weight=0)
+
+            # Wide Range frame grid
+            self.range_lbl1.grid(row=0, column=0, sticky="w")
+            self.start_entry.grid(row=0, column=1, sticky="w", padx=(5, 15))
+            self.range_lbl2.grid(row=0, column=2, sticky="w")
+            self.end_entry.grid(row=0, column=3, sticky="w", padx=(5, 15))
+
+            # Wide Sim frame grid
+            self.sim_lbl.grid(row=0, column=0, sticky="w")
+            self.sim_entry.grid(row=0, column=1, sticky="w", padx=(5, 15))
+            self.sim_preset_lbl.grid(row=0, column=2, sticky="w")
+            self.sim_preset_buttons_frame.grid(row=0, column=3, sticky="w", padx=(5, 0))
+
+            # Wide action buttons side-by-side
+            self.gen_btn.pack(side="left", fill="x", expand=True, padx=(0, 5))
+            self.scan_btn.pack(side="right", fill="x", expand=True, padx=(5, 0))
+
 
     def _on_canvas_configure(self, event):
         # Match the width of the scrollable frame to the canvas width
@@ -386,11 +453,6 @@ class ChromeProfileManagerApp:
             right_btn.bind("<Enter>", on_enter)
             right_btn.bind("<Leave>", on_leave)
             
-            # Pack order
-            left_btn.pack(side="left", padx=(5, 0))
-            chips_canvas.pack(side="left", fill="x", expand=True, padx=2, pady=5)
-            right_btn.pack(side="left", padx=(0, 5))
-            
             chips_inner = tk.Frame(chips_canvas, bg=self.card_color)
             canvas_win = chips_canvas.create_window((0, 0), window=chips_inner, anchor="nw")
             
@@ -437,7 +499,29 @@ class ChromeProfileManagerApp:
                 pady=6,
                 command=lambda dirs=dir_names: self.open_profile_dirs(dirs)
             )
-            open_btn.pack(side="right", padx=10, pady=5)
+            
+            # Responsive configuration for actual rows
+            def make_actual_row_responsive(event, l=left_btn, c=chips_canvas, r=right_btn, b=open_btn):
+                if event.width < 500:
+                    l.grid(row=0, column=0, sticky="w", padx=(5, 0), pady=5)
+                    c.grid(row=0, column=1, sticky="ew", padx=2, pady=5)
+                    r.grid(row=0, column=2, sticky="e", padx=(0, 5), pady=5)
+                    b.grid(row=1, column=0, columnspan=3, sticky="ew", padx=15, pady=(2, 8))
+                    event.widget.columnconfigure(0, weight=0)
+                    event.widget.columnconfigure(1, weight=1)
+                    event.widget.columnconfigure(2, weight=0)
+                    event.widget.columnconfigure(3, weight=0)
+                else:
+                    l.grid(row=0, column=0, sticky="w", padx=(5, 0), pady=5)
+                    c.grid(row=0, column=1, sticky="ew", padx=2, pady=5)
+                    r.grid(row=0, column=2, sticky="e", padx=(0, 5), pady=5)
+                    b.grid(row=0, column=3, sticky="e", padx=10, pady=5)
+                    event.widget.columnconfigure(0, weight=0)
+                    event.widget.columnconfigure(1, weight=1)
+                    event.widget.columnconfigure(2, weight=0)
+                    event.widget.columnconfigure(3, weight=0)
+
+            row_frame.bind("<Configure>", make_actual_row_responsive)
             
             current_idx += simultaneous
             row_idx += 1
@@ -452,7 +536,7 @@ class ChromeProfileManagerApp:
         if not os.path.exists(chrome_path):
             messagebox.showerror("Lỗi", f"Không tìm thấy file Chrome tại: {chrome_path}\nVui lòng kiểm tra lại đường dẫn.")
             return
-
+ 
         opened_count = 0
         for d in dir_names:
             try:
@@ -509,7 +593,6 @@ class ChromeProfileManagerApp:
             # Label showing the range of profiles
             label_text = f"Profiles {current} - {group_end}   ({group_end - current + 1} profiles)"
             lbl = tk.Label(row_frame, text=label_text, bg=self.card_color, fg=self.text_color, font=("Segoe UI", 10, "bold"), anchor="w")
-            lbl.pack(side="left", fill="x", expand=True, padx=15, pady=8)
             
             # Action button
             open_btn = tk.Button(
@@ -526,7 +609,21 @@ class ChromeProfileManagerApp:
                 pady=6,
                 command=lambda s=current, e=group_end: self.open_profiles(s, e)
             )
-            open_btn.pack(side="right", padx=10, pady=5)
+            
+            # Responsive configuration for sequential rows
+            def make_row_responsive(event, l=lbl, b=open_btn):
+                if event.width < 500:
+                    l.grid(row=0, column=0, sticky="w", padx=15, pady=(8, 2))
+                    b.grid(row=1, column=0, sticky="ew", padx=15, pady=(2, 8))
+                    event.widget.columnconfigure(0, weight=1)
+                    event.widget.columnconfigure(1, weight=0)
+                else:
+                    l.grid(row=0, column=0, sticky="w", padx=15, pady=8)
+                    b.grid(row=0, column=1, sticky="e", padx=10, pady=5)
+                    event.widget.columnconfigure(0, weight=1)
+                    event.widget.columnconfigure(1, weight=0)
+                    
+            row_frame.bind("<Configure>", make_row_responsive)
             
             current = group_end + 1
             row_idx += 1
@@ -546,7 +643,7 @@ class ChromeProfileManagerApp:
         if not os.path.exists(chrome_path):
             messagebox.showerror("Lỗi", f"Không tìm thấy file Chrome tại: {chrome_path}\nVui lòng kiểm tra lại đường dẫn.")
             return
-
+ 
         opened_count = 0
         for i in range(start_num, end_num + 1):
             profile_dir = f"Profile {i}"
