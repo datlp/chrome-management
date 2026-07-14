@@ -183,7 +183,7 @@ class ChromeProfileManagerApp:
         self.header_frame = ttk.Frame(self.main_container)
         self.header_frame.pack(fill="x", pady=(5, 5))
         
-        self.list_header_lbl = ttk.Label(self.header_frame, text="Danh sách Profile:", style="TLabel", font=("Segoe UI", 11, "bold"))
+        self.list_header_lbl = ttk.Label(self.header_frame, text="Danh sách Profiles:", style="TLabel", font=("Segoe UI", 11, "bold"))
         self.list_header_lbl.pack(side="left", anchor="w")
         
         self.refresh_btn = ttk.Button(self.header_frame, text="⟳ Làm mới", style="Accent.TButton", width=12, command=self.refresh_profile_list)
@@ -207,9 +207,9 @@ class ChromeProfileManagerApp:
         list_outer_frame.pack(fill="both", expand=True)
         
         self.profile_tree = ttk.Treeview(list_outer_frame, columns=("Directory", "Email", "Status"), show="headings", style="Treeview", selectmode="extended")
-        self.profile_tree.heading("Directory", text="Thư mục Profile")
-        self.profile_tree.heading("Email", text="Email / Tên")
-        self.profile_tree.heading("Status", text="Trạng thái")
+        self.profile_tree.heading("Directory", text="Thư mục Profile", command=lambda: self.sort_treeview(self.profile_tree, "Directory", False))
+        self.profile_tree.heading("Email", text="Email / Tên", command=lambda: self.sort_treeview(self.profile_tree, "Email", False))
+        self.profile_tree.heading("Status", text="Trạng thái", command=lambda: self.sort_treeview(self.profile_tree, "Status", False))
         self.profile_tree.column("Directory", width=200, anchor="w")
         self.profile_tree.column("Email", width=250, anchor="w")
         self.profile_tree.column("Status", width=120, anchor="center")
@@ -265,9 +265,12 @@ class ChromeProfileManagerApp:
         # Left/Top: Treeview Frame
         self.tree_frame = ttk.Frame(self.ext_grid_frame, style="Card.TFrame", padding=10)
         
+        # Title of Tab 2 Table
+        ttk.Label(self.tree_frame, text="Danh sách Extensions:", style="TLabel", font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0, 10))
+        
         self.tree = ttk.Treeview(self.tree_frame, columns=("Name", "ID"), show="headings", style="Treeview")
-        self.tree.heading("Name", text="Tên Extension")
-        self.tree.heading("ID", text="Extension ID")
+        self.tree.heading("Name", text="Tên Extension", command=lambda: self.sort_treeview(self.tree, "Name", False))
+        self.tree.heading("ID", text="Extension ID", command=lambda: self.sort_treeview(self.tree, "ID", False))
         self.tree.column("Name", width=250, anchor="w")
         self.tree.column("ID", width=250, anchor="w")
         
@@ -852,6 +855,23 @@ class ChromeProfileManagerApp:
                 self.profile_context_menu.tk_popup(event.x_root, event.y_root)
             finally:
                 self.profile_context_menu.grab_release()
+
+    def sort_treeview(self, treeview, col, reverse):
+        items = [(treeview.set(item_id, col), item_id) for item_id in treeview.get_children("")]
+        
+        import re
+        def natural_sort_key(item_tuple):
+            val = item_tuple[0]
+            if val.lower() == "default":
+                return [0, ""]
+            return [1] + [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', val)]
+            
+        items.sort(key=natural_sort_key, reverse=reverse)
+        
+        for index, (_, item_id) in enumerate(items):
+            treeview.move(item_id, "", index)
+            
+        treeview.heading(col, command=lambda c=col: self.sort_treeview(treeview, c, not reverse))
 
 if __name__ == "__main__":
     root = tk.Tk()
