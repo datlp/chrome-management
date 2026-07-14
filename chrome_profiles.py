@@ -226,7 +226,11 @@ class ChromeProfileManagerApp:
         # Right-click Context Menu
         self.profile_context_menu = tk.Menu(self.profile_tree, tearoff=0, bg=self.card_color, fg=self.text_color, activebackground=self.accent_color, activeforeground="#ffffff")
         self.profile_context_menu.add_command(label="Mở các profile đã chọn", command=self.open_selected_profiles)
+        self.profile_context_menu.add_separator()
+        self.profile_context_menu.add_command(label="Xóa các profile đã chọn", command=self.delete_selected_profiles)
         self.profile_tree.bind("<Button-3>", self.show_profile_context_menu)
+        self.profile_tree.bind("<ButtonPress-1>", self.on_drag_start)
+        self.profile_tree.bind("<B1-Motion>", self.on_drag_motion)
         
         # Selection & Open Controls Bar
         self.profile_ctrl_frame = ttk.Frame(self.main_container)
@@ -713,6 +717,8 @@ class ChromeProfileManagerApp:
             
         for entry in os.scandir(user_data_path):
             if entry.is_dir():
+                if entry.name.lower() in ("system profile", "guest profile"):
+                    continue
                 pref_path = os.path.join(entry.path, "Preferences")
                 if os.path.exists(pref_path):
                     email = ""
@@ -872,6 +878,79 @@ class ChromeProfileManagerApp:
             treeview.move(item_id, "", index)
             
         treeview.heading(col, command=lambda c=col: self.sort_treeview(treeview, c, not reverse))
+
+    def on_drag_start(self, event):
+        item = self.profile_tree.identify_row(event.y)
+        if item:
+            self.drag_start_item = item
+
+    def on_drag_motion(self, event):
+        item = self.profile_tree.identify_row(event.y)
+        if item and hasattr(self, 'drag_start_item') and self.drag_start_item:
+            children = list(self.profile_tree.get_children(""))
+            try:
+                start_idx = children.index(self.drag_start_item)
+                end_idx = children.index(item)
+                
+                low = min(start_idx, end_idx)
+                high = max(start_idx, end_idx)
+                
+                to_select = children[low:high+1]
+                self.profile_tree.selection_set(to_select)
+                self.update_profile_selected_count_label()
+            except ValueError:
+                pass
+
+    def delete_selected_profiles(self):
+        selected_items = self.profile_tree.selection()
+        if not selected_items:
+            messagebox.showwarning("Cảnh báo", "Vui lòng chọn ít nhất một profile để xóa.")
+            return
+            
+        dirs_to_delete = []
+        for item in selected_items:
+            values = self.profile_tree.item(item, "values")
+            dir_name = values[0]
+            if dir_name == "Không có profile nào":
+                continue
+            dirs_to_delete.append(dir_name)
+            
+        if not dirs_to_delete:
+            return
+            
+        confirm = messagebox.askyesno(
+            "Xác nhận xóa",
+            f"Bạn có chắc chắn muốn xóa vĩnh viễn {len(dirs_to_delete)} profile đã chọn khỏi máy tính?\n\n"
+            "Cảnh báo: Hành động này sẽ xóa toàn bộ dữ liệu duyệt web, tài khoản của các profile này và KHÔNG THỂ HOÀN TÁC."
+        )
+        if not confirm:
+            return
+            
+        import shutil
+        user_data_path = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data")
+        
+        deleted_count = 0
+        failed_dirs = []
+        for d in dirs_to_delete:
+            path = os.path.join(user_data_path, d)
+            if os.path.exists(path):
+                try:
+                    shutil.rmtree(path)
+                    deleted_count += 1
+                except Exception as e:
+                    failed_dirs.append(f"{d} (Lỗi: {e})")
+                    
+        if failed_dirs:
+            err_msg = "\n".join(failed_dirs)
+            messagebox.showwarning(
+                "Hoàn thành một phần",
+                f"Đã xóa thành công {deleted_count} profile.\n\n"
+                f"Không thể xóa các profile sau (vui lòng tắt Chrome trước khi xóa):\n{err_msg}"
+            )
+        else:
+            messagebox.showinfo("Thành công", f"Đã xóa thành công {deleted_count} profile khỏi máy tính.")
+            
+        self.refresh_profile_list()
 
 if __name__ == "__main__":
     root = tk.Tk()
