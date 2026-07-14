@@ -2,11 +2,13 @@ import os
 import json
 import subprocess
 import time
+import csv
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
 CONFIG_DIR = os.path.join(os.environ.get("USERPROFILE", os.path.expanduser("~")), "dsoft", "chrome-profile-management")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "chrome_profiles_config.json")
+BAT_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "old-refer-only", "chrome_all_profiles_must_install_extension_ids.bat")
 
 DEFAULT_CHROME_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 if not os.path.exists(DEFAULT_CHROME_PATH):
@@ -56,6 +58,16 @@ class ChromeProfileManagerApp:
         # Scrollbar and Canvas styling
         self.style.configure("Vertical.TScrollbar", background=self.border_color, borderwidth=0, arrowsize=12)
         
+        # Notebook styles
+        self.style.configure("TNotebook", background=self.bg_color, borderwidth=0)
+        self.style.configure("TNotebook.Tab", background=self.card_color, foreground=self.text_muted, borderwidth=1, lightcolor=self.border_color, bordercolor=self.border_color, font=("Segoe UI", 10, "bold"), padding=(15, 6))
+        self.style.map("TNotebook.Tab", background=[("selected", self.bg_color)], foreground=[("selected", self.accent_color)])
+        
+        # Treeview styles
+        self.style.configure("Treeview", background=self.card_color, foreground=self.text_color, fieldbackground=self.card_color, borderwidth=0, font=("Segoe UI", 10))
+        self.style.configure("Treeview.Heading", background=self.border_color, foreground=self.text_color, borderwidth=1, font=("Segoe UI", 10, "bold"))
+        self.style.map("Treeview", background=[("selected", self.accent_color)], foreground=[("selected", "#ffffff")])
+
         # Debounce and change state
         self.debounce_timer = None
         self.current_mode = "sequential"
@@ -68,8 +80,17 @@ class ChromeProfileManagerApp:
         self.simultaneous_var = tk.IntVar(value=5)
         self.chrome_path_var = tk.StringVar(value=DEFAULT_CHROME_PATH)
         
+        # Extension CRUD variables
+        self.extensions = []
+        self.bat_header = []
+        self.bat_footer = []
+        self.ext_name_var = tk.StringVar()
+        self.ext_id_var = tk.StringVar()
+        self.selected_ext_idx = None # Tracks selected item index
+        
         # Load existing config if available
         self.load_config()
+        self.load_extensions_from_bat()
         
         # Bind traces after loading config
         self.website_var.trace_add("write", self.on_config_change)
@@ -124,8 +145,23 @@ class ChromeProfileManagerApp:
             print(f"Error saving config: {e}")
 
     def build_ui(self):
+        # Create ttk.Notebook
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill="both", expand=True)
+        
+        # Tab 1: Profile Manager
+        self.tab_profiles = ttk.Frame(self.notebook)
+        self.notebook.add(self.tab_profiles, text="Quản lý Profile")
+        
+        # Tab 2: Extension Manager
+        self.tab_extensions = ttk.Frame(self.notebook)
+        self.notebook.add(self.tab_extensions, text="Quản lý Extensions")
+        
+        # ==========================================
+        # TAB 1: Profile Manager UI Construction
+        # ==========================================
         # Main container with padding
-        self.main_container = ttk.Frame(self.root, padding=20)
+        self.main_container = ttk.Frame(self.tab_profiles, padding=20)
         self.main_container.pack(fill="both", expand=True)
         
         # Header
@@ -216,6 +252,57 @@ class ChromeProfileManagerApp:
         self.canvas.pack(side="left", fill="both", expand=True, padx=5, pady=5)
         scrollbar.pack(side="right", fill="y")
         
+        # ==========================================
+        # TAB 2: Extension Manager UI Construction
+        # ==========================================
+        self.ext_pane = ttk.Frame(self.tab_extensions, padding=20)
+        self.ext_pane.pack(fill="both", expand=True)
+        
+        # Header
+        ext_header_lbl = ttk.Label(self.ext_pane, text="QUẢN LÝ CHROMIUM EXTENSIONS", style="Header.TLabel")
+        ext_header_lbl.pack(pady=(0, 15), anchor="w")
+        
+        # Grid frame container to manage responsive layout of Treeview & Form
+        self.ext_grid_frame = ttk.Frame(self.ext_pane)
+        self.ext_grid_frame.pack(fill="both", expand=True)
+        
+        # Left/Top: Treeview Frame
+        self.tree_frame = ttk.Frame(self.ext_grid_frame, style="Card.TFrame", padding=10)
+        
+        self.tree = ttk.Treeview(self.tree_frame, columns=("Name", "ID"), show="headings", style="Treeview")
+        self.tree.heading("Name", text="Tên Extension")
+        self.tree.heading("ID", text="Extension ID")
+        self.tree.column("Name", width=250, anchor="w")
+        self.tree.column("ID", width=250, anchor="w")
+        
+        self.tree_scroll = ttk.Scrollbar(self.tree_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=self.tree_scroll.set)
+        self.tree.bind("<<TreeviewSelect>>", self.on_treeview_select)
+        
+        # Right/Bottom: Form Frame
+        self.form_frame = ttk.Frame(self.ext_grid_frame, style="Card.TFrame", padding=15)
+        
+        self.lbl_ext_name = ttk.Label(self.form_frame, text="Tên Extension:", style="Card.TLabel")
+        self.ent_ext_name = tk.Entry(self.form_frame, textvariable=self.ext_name_var, bg=self.bg_color, fg=self.text_color, 
+                                     insertbackground=self.text_color, highlightthickness=1, highlightbackground=self.border_color, 
+                                     highlightcolor=self.accent_color, relief="flat", font=("Segoe UI", 10))
+                                     
+        self.lbl_ext_id = ttk.Label(self.form_frame, text="Extension ID:", style="Card.TLabel")
+        self.ent_ext_id = tk.Entry(self.form_frame, textvariable=self.ext_id_var, bg=self.bg_color, fg=self.text_color, 
+                                   insertbackground=self.text_color, highlightthickness=1, highlightbackground=self.border_color, 
+                                   highlightcolor=self.accent_color, relief="flat", font=("Segoe UI", 10))
+                                   
+        self.btn_ext_add = ttk.Button(self.form_frame, text="Thêm Mới", style="Accent.TButton", command=self.add_extension)
+        self.btn_ext_update = ttk.Button(self.form_frame, text="Cập Nhật", style="Normal.TButton", command=self.update_extension)
+        self.btn_ext_delete = ttk.Button(self.form_frame, text="Xóa", style="Normal.TButton", command=self.delete_extension)
+        self.btn_ext_import = ttk.Button(self.form_frame, text="Import CSV", style="Normal.TButton", command=self.import_extensions_csv)
+        self.btn_ext_export = ttk.Button(self.form_frame, text="Export CSV", style="Normal.TButton", command=self.export_extensions_csv)
+        self.btn_ext_save = tk.Button(self.form_frame, text="LƯU THAY ĐỔI SCRIPT", bg="#28a745", fg="#ffffff", activebackground="#218838", activeforeground="#ffffff", relief="flat", bd=0, font=("Segoe UI", 10, "bold"), command=self.save_extensions_to_bat)
+        self.btn_ext_run = tk.Button(self.form_frame, text="CHẠY SCRIPT (ADMIN)", bg=self.accent_color, fg="#ffffff", activebackground=self.accent_hover, activeforeground="#ffffff", relief="flat", bd=0, font=("Segoe UI", 10, "bold"), command=self.run_extension_script)
+        
+        # Populate initial treeview list
+        self.populate_treeview()
+        
         # Bind root resize to responsive adjustment
         self.root.bind("<Configure>", self.on_window_resize)
         
@@ -233,7 +320,7 @@ class ChromeProfileManagerApp:
                 self.apply_responsive_layout(narrow=is_narrow)
 
     def apply_responsive_layout(self, narrow):
-        # Clean up grid settings
+        # Clean up Tab 1 configuration card grid settings
         for widget in [self.web_lbl, self.web_entry, self.preset_frame, self.range_frame, self.sim_frame, self.chrome_lbl, self.chrome_entry, self.browse_btn]:
             widget.grid_forget()
         for widget in [self.range_lbl1, self.start_entry, self.range_lbl2, self.end_entry]:
@@ -243,9 +330,19 @@ class ChromeProfileManagerApp:
         
         self.gen_btn.pack_forget()
         self.scan_btn.pack_forget()
+        
+        # Clean up Tab 2 layouts
+        self.tree_frame.pack_forget()
+        self.form_frame.pack_forget()
+        self.tree.pack_forget()
+        self.tree_scroll.pack_forget()
+        for widget in [self.lbl_ext_name, self.ent_ext_name, self.lbl_ext_id, self.ent_ext_id, self.btn_ext_add, self.btn_ext_update, self.btn_ext_delete, self.btn_ext_import, self.btn_ext_export, self.btn_ext_save, self.btn_ext_run]:
+            widget.grid_forget()
 
         if narrow:
-            # Narrow configuration layout
+            # ==========================================
+            # TAB 1: Narrow Layout
+            # ==========================================
             self.web_lbl.grid(row=0, column=0, columnspan=3, sticky="w", pady=(5, 2))
             self.web_entry.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(2, 5))
             self.preset_frame.grid(row=2, column=0, columnspan=3, sticky="w", pady=(2, 8))
@@ -274,8 +371,38 @@ class ChromeProfileManagerApp:
             # Narrow action buttons stack
             self.gen_btn.pack(side="top", fill="x", pady=(0, 5))
             self.scan_btn.pack(side="top", fill="x", pady=(5, 0))
+            
+            # ==========================================
+            # TAB 2: Narrow Layout
+            # ==========================================
+            self.tree_frame.pack(side="top", fill="both", expand=True, pady=(0, 10))
+            self.form_frame.pack(side="top", fill="x", expand=False)
+            
+            self.tree.pack(side="left", fill="both", expand=True)
+            self.tree_scroll.pack(side="right", fill="y")
+            
+            self.lbl_ext_name.grid(row=0, column=0, sticky="w", pady=2)
+            self.ent_ext_name.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(2, 8))
+            self.lbl_ext_id.grid(row=2, column=0, sticky="w", pady=2)
+            self.ent_ext_id.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(2, 8))
+            
+            self.btn_ext_add.grid(row=4, column=0, sticky="ew", padx=(0, 2), pady=5)
+            self.btn_ext_update.grid(row=4, column=1, sticky="ew", padx=2, pady=5)
+            self.btn_ext_delete.grid(row=4, column=2, sticky="ew", padx=(2, 0), pady=5)
+            
+            self.btn_ext_import.grid(row=5, column=0, sticky="ew", padx=(0, 2), pady=5)
+            self.btn_ext_export.grid(row=5, column=1, columnspan=2, sticky="ew", padx=(2, 0), pady=5)
+            
+            self.btn_ext_save.grid(row=6, column=0, columnspan=3, sticky="ew", pady=5)
+            self.btn_ext_run.grid(row=7, column=0, columnspan=3, sticky="ew", pady=5)
+            
+            self.form_frame.columnconfigure(0, weight=1)
+            self.form_frame.columnconfigure(1, weight=1)
+            self.form_frame.columnconfigure(2, weight=1)
         else:
-            # Wide configuration layout
+            # ==========================================
+            # TAB 1: Wide Layout
+            # ==========================================
             self.web_lbl.grid(row=0, column=0, sticky="w", pady=5)
             self.web_entry.grid(row=0, column=1, columnspan=2, sticky="ew", pady=5, padx=(10, 0))
             self.preset_frame.grid(row=1, column=1, columnspan=2, sticky="w", pady=(2, 8), padx=(10, 0))
@@ -304,6 +431,274 @@ class ChromeProfileManagerApp:
             # Wide action buttons side-by-side
             self.gen_btn.pack(side="left", fill="x", expand=True, padx=(0, 5))
             self.scan_btn.pack(side="right", fill="x", expand=True, padx=(5, 0))
+            
+            # ==========================================
+            # TAB 2: Wide Layout
+            # ==========================================
+            self.tree_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
+            self.form_frame.pack(side="right", fill="both", expand=False)
+            
+            self.tree.pack(side="left", fill="both", expand=True)
+            self.tree_scroll.pack(side="right", fill="y")
+            
+            self.lbl_ext_name.grid(row=0, column=0, sticky="w", pady=2)
+            self.ent_ext_name.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(2, 10))
+            self.lbl_ext_id.grid(row=2, column=0, sticky="w", pady=2)
+            self.ent_ext_id.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(2, 15))
+            
+            self.btn_ext_add.grid(row=4, column=0, sticky="ew", padx=(0, 2), pady=5)
+            self.btn_ext_update.grid(row=4, column=1, sticky="ew", padx=(2, 0), pady=5)
+            self.btn_ext_delete.grid(row=5, column=0, columnspan=2, sticky="ew", pady=5)
+            
+            self.btn_ext_import.grid(row=6, column=0, sticky="ew", padx=(0, 2), pady=5)
+            self.btn_ext_export.grid(row=6, column=1, sticky="ew", padx=(2, 0), pady=5)
+            
+            self.btn_ext_save.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(15, 5))
+            self.btn_ext_run.grid(row=8, column=0, columnspan=2, sticky="ew", pady=5)
+            
+            self.form_frame.columnconfigure(0, weight=1)
+            self.form_frame.columnconfigure(1, weight=1)
+            self.form_frame.columnconfigure(2, weight=0)
+
+    # ==========================================
+    # EXTENSIONS CRUD METHODS
+    # ==========================================
+    def populate_treeview(self):
+        # Clear existing items
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        # Populate
+        for ext in self.extensions:
+            self.tree.insert("", "end", values=(ext["name"], ext["id"]))
+            
+    def on_treeview_select(self, event):
+        selected = self.tree.selection()
+        if selected:
+            item = selected[0]
+            values = self.tree.item(item, "values")
+            self.ext_name_var.set(values[0])
+            self.ext_id_var.set(values[1])
+            # Find index in list
+            for idx, ext in enumerate(self.extensions):
+                if ext["id"] == values[1]:
+                    self.selected_ext_idx = idx
+                    break
+        else:
+            self.selected_ext_idx = None
+            
+    def add_extension(self):
+        name = self.ext_name_var.get().strip()
+        ext_id = self.ext_id_var.get().strip()
+        if not name or not ext_id:
+            messagebox.showwarning("Cảnh báo", "Vui lòng điền đầy đủ Tên và ID Extension.")
+            return
+            
+        # Check if ID already exists
+        if any(ext["id"] == ext_id for ext in self.extensions):
+            messagebox.showwarning("Cảnh báo", f"Extension ID '{ext_id}' đã tồn tại.")
+            return
+            
+        self.extensions.append({"name": name, "id": ext_id})
+        self.populate_treeview()
+        self.clear_ext_fields()
+        
+    def update_extension(self):
+        if self.selected_ext_idx is None:
+            messagebox.showwarning("Cảnh báo", "Vui lòng chọn Extension từ bảng để cập nhật.")
+            return
+            
+        name = self.ext_name_var.get().strip()
+        ext_id = self.ext_id_var.get().strip()
+        if not name or not ext_id:
+            messagebox.showwarning("Cảnh báo", "Vui lòng điền đầy đủ Tên và ID Extension.")
+            return
+            
+        # Update
+        self.extensions[self.selected_ext_idx] = {"name": name, "id": ext_id}
+        self.populate_treeview()
+        self.clear_ext_fields()
+        
+    def delete_extension(self):
+        if self.selected_ext_idx is None:
+            messagebox.showwarning("Cảnh báo", "Vui lòng chọn Extension từ bảng để xóa.")
+            return
+            
+        del self.extensions[self.selected_ext_idx]
+        self.populate_treeview()
+        self.clear_ext_fields()
+        
+    def clear_ext_fields(self):
+        self.ext_name_var.set("")
+        self.ext_id_var.set("")
+        self.selected_ext_idx = None
+        self.tree.selection_remove(self.tree.selection())
+
+    def load_extensions_from_bat(self):
+        self.extensions = []
+        self.bat_header = []
+        self.bat_footer = []
+        
+        if not os.path.exists(BAT_FILE_PATH):
+            return
+            
+        try:
+            with open(BAT_FILE_PATH, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                
+            start_idx = -1
+            end_idx = -1
+            for i, line in enumerate(lines):
+                if 'set "EXT_LIST="' in line:
+                    start_idx = i
+                elif 'set /a count=1' in line:
+                    end_idx = i
+                    break
+                    
+            if start_idx != -1 and end_idx != -1:
+                self.bat_header = lines[:start_idx + 1]
+                self.bat_footer = lines[end_idx:]
+                
+                import re
+                for line in lines[start_idx + 1 : end_idx]:
+                    line_str = line.strip()
+                    if not line_str:
+                        continue
+                    if line_str.startswith("echo ") and " & set " in line_str:
+                        parts = line_str.split(" & set ")
+                        name = parts[0][5:] # Strip "echo "
+                        id_part = parts[1]
+                        m_id = re.search(r'!EXT_LIST!\s+([a-zA-Z0-9]+)"', id_part)
+                        if m_id:
+                            ext_id = m_id.group(1)
+                            self.extensions.append({"name": name, "id": ext_id})
+            else:
+                self.bat_footer = lines
+        except Exception as e:
+            print(f"Error loading extensions: {e}")
+
+    def save_extensions_to_bat(self):
+        try:
+            os.makedirs(os.path.dirname(BAT_FILE_PATH), exist_ok=True)
+            with open(BAT_FILE_PATH, "w", encoding="utf-8") as f:
+                # Write header
+                f.writelines(self.bat_header)
+                
+                # Write extensions
+                f.write("\n")
+                for ext in self.extensions:
+                    f.write(f'echo {ext["name"]} & set "EXT_LIST=!EXT_LIST! {ext["id"]}"\n')
+                f.write("\n\n")
+                
+                # Write footer
+                f.writelines(self.bat_footer)
+            messagebox.showinfo("Thành công", "Đã lưu thay đổi vào file script .bat thành công.")
+            return True
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"Không thể lưu file: {e}")
+            return False
+
+    def run_extension_script(self):
+        if not os.path.exists(BAT_FILE_PATH):
+            messagebox.showerror("Lỗi", "Không tìm thấy file script .bat")
+            return
+        try:
+            # Execute the bat file with Administrator privileges using powershell
+            cmd = f'Start-Process -FilePath "{BAT_FILE_PATH}" -Verb RunAs'
+            subprocess.Popen(["powershell", "-Command", cmd], shell=True)
+            messagebox.showinfo("Thành công", "Đang chạy script cài đặt Extension với quyền Administrator.")
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"Không thể chạy script: {e}")
+
+    def import_extensions_csv(self):
+        file_path = filedialog.askopenfilename(
+            title="Import CSV Extensions",
+            filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")]
+        )
+        if not file_path:
+            return
+            
+        try:
+            imported_exts = []
+            with open(file_path, "r", encoding="utf-8") as f:
+                reader = csv.reader(f)
+                rows = list(reader)
+                
+            if not rows:
+                messagebox.showwarning("Cảnh báo", "File CSV trống.")
+                return
+                
+            # Skip header row if it contains header keywords
+            start_row = 0
+            first_row = rows[0]
+            if len(first_row) >= 2:
+                # If first row has labels like 'name', 'id', 'tên', etc.
+                val0_lower = first_row[0].lower()
+                val1_lower = first_row[1].lower()
+                if "name" in val0_lower or "tên" in val0_lower or "id" in val1_lower:
+                    start_row = 1
+                    
+            for row in rows[start_row:]:
+                if not row or len(row) < 2:
+                    continue
+                name = row[0].strip()
+                ext_id = row[1].strip()
+                if name and ext_id:
+                    imported_exts.append({"name": name, "id": ext_id})
+                    
+            if not imported_exts:
+                messagebox.showwarning("Cảnh báo", "Không tìm thấy dữ liệu Extension hợp lệ trong file CSV.")
+                return
+                
+            # Ask to append or replace
+            ans = messagebox.askyesnocancel(
+                "Import CSV",
+                "Bạn có muốn giữ lại danh sách Extension hiện tại không?\n\n- Chọn 'Yes' để Thêm/Gộp dữ liệu.\n- Chọn 'No' để Thay thế toàn bộ."
+            )
+            
+            if ans is None:
+                return # User cancelled
+                
+            if ans:
+                # Append: Only add if ID doesn't already exist
+                appended_count = 0
+                for ext in imported_exts:
+                    if not any(existing["id"] == ext["id"] for existing in self.extensions):
+                        self.extensions.append(ext)
+                        appended_count += 1
+                messagebox.showinfo("Thành công", f"Đã gộp thêm {appended_count} Extensions mới từ file CSV.")
+            else:
+                # Replace
+                self.extensions = imported_exts
+                messagebox.showinfo("Thành công", f"Đã thay thế toàn bộ danh sách bằng {len(imported_exts)} Extensions từ file CSV.")
+                
+            self.populate_treeview()
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"Không thể import file CSV: {e}")
+
+    def export_extensions_csv(self):
+        if not self.extensions:
+            messagebox.showwarning("Cảnh báo", "Danh sách Extension trống, không thể export.")
+            return
+            
+        file_path = filedialog.asksaveasfilename(
+            title="Export CSV Extensions",
+            initialfile="chrome_extension.csv",
+            defaultextension=".csv",
+            filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")]
+        )
+        if not file_path:
+            return
+            
+        try:
+            with open(file_path, "w", encoding="utf-8", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["Name", "ID"])
+                for ext in self.extensions:
+                    writer.writerow([ext["name"], ext["id"]])
+            messagebox.showinfo("Thành công", f"Đã xuất dữ liệu ra file CSV thành công:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"Không thể export file CSV: {e}")
+
 
 
     def _on_canvas_configure(self, event):
