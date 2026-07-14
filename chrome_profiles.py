@@ -202,6 +202,9 @@ class ChromeProfileManagerApp:
         self.sim_combo = ttk.Combobox(self.sim_header_frame, textvariable=self.simultaneous_var, values=[2, 3, 4, 5, 6, 7, 8, 9], width=3, justify="center")
         self.sim_combo.pack(side="left")
         
+        self.btn_open_new = ttk.Button(self.sim_header_frame, text="Mở profile mới", style="Normal.TButton", command=self.open_n_new_profiles)
+        self.btn_open_new.pack(side="left", padx=(8, 0))
+        
         # Scrollable List Frame (Treeview table)
         list_outer_frame = ttk.Frame(self.main_container, style="Card.TFrame")
         list_outer_frame.pack(fill="both", expand=True)
@@ -231,6 +234,7 @@ class ChromeProfileManagerApp:
         self.profile_tree.bind("<Button-3>", self.show_profile_context_menu)
         self.profile_tree.bind("<ButtonPress-1>", self.on_drag_start)
         self.profile_tree.bind("<B1-Motion>", self.on_drag_motion)
+        self.profile_tree.bind("<Double-1>", lambda e: self.open_selected_profiles())
         
         # Selection & Open Controls Bar
         self.profile_ctrl_frame = ttk.Frame(self.main_container)
@@ -951,6 +955,50 @@ class ChromeProfileManagerApp:
             messagebox.showinfo("Thành công", f"Đã xóa thành công {deleted_count} profile khỏi máy tính.")
             
         self.refresh_profile_list()
+
+    def open_n_new_profiles(self):
+        try:
+            n = self.simultaneous_var.get()
+            if n <= 0:
+                raise ValueError()
+        except (tk.TclError, ValueError):
+            messagebox.showwarning("Cảnh báo", "Vui lòng chọn số lượng luồng cùng lúc hợp lệ.")
+            return
+            
+        user_data_path = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data")
+        existing_nums = []
+        if os.path.exists(user_data_path):
+            import re
+            for entry in os.scandir(user_data_path):
+                if entry.is_dir():
+                    match = re.match(r"^Profile (\d+)$", entry.name, re.IGNORECASE)
+                    if match:
+                        existing_nums.append(int(match.group(1)))
+                        
+        max_num = max(existing_nums) if existing_nums else 0
+        new_dirs = [f"Profile {max_num + i}" for i in range(1, n + 1)]
+        
+        chrome_path = self.chrome_path_var.get()
+        website = self.website_var.get()
+        if not (website.startswith("http://") or website.startswith("https://")):
+            website = "https://" + website
+            
+        if not os.path.exists(chrome_path):
+            messagebox.showerror("Lỗi", f"Không tìm thấy file Chrome tại: {chrome_path}\nVui lòng kiểm tra lại đường dẫn.")
+            return
+            
+        opened_count = 0
+        for dir_name in new_dirs:
+            try:
+                subprocess.Popen([chrome_path, f"--profile-directory={dir_name}", website])
+                opened_count += 1
+                time.sleep(0.3)
+            except Exception as e:
+                messagebox.showerror("Lỗi", f"Không thể mở Profile {dir_name}: {e}")
+                break
+                
+        messagebox.showinfo("Thành công", f"Đã khởi chạy {opened_count} profiles mới: {', '.join(new_dirs)}")
+        self.root.after(1000, self.refresh_profile_list)
 
 if __name__ == "__main__":
     root = tk.Tk()
