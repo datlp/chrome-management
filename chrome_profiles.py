@@ -179,20 +179,6 @@ class ChromeProfileManagerApp:
             
 
 
-        # Sim count Frame
-        self.sim_frame = ttk.Frame(self.config_card, style="Card.TFrame")
-        self.sim_lbl = ttk.Label(self.sim_frame, text="Số lượng cùng lúc:", style="Card.TLabel")
-        self.sim_entry = tk.Entry(self.sim_frame, textvariable=self.simultaneous_var, width=6, bg=self.bg_color, fg=self.text_color, 
-                             insertbackground=self.text_color, highlightthickness=1, highlightbackground=self.border_color, 
-                             highlightcolor=self.accent_color, relief="flat", font=("Segoe UI", 10), justify="center")
-        self.sim_preset_lbl = ttk.Label(self.sim_frame, text="Mặc định:", style="Card.TLabel")
-        self.sim_preset_buttons_frame = ttk.Frame(self.sim_frame, style="Card.TFrame")
-        for num in [2, 4, 6, 8, 10, 12]:
-            btn = tk.Button(self.sim_preset_buttons_frame, text=str(num), bg=self.border_color, fg=self.text_muted, activebackground=self.accent_color,
-                            activeforeground="#ffffff", relief="flat", bd=0, font=("Segoe UI", 8, "bold"), padx=8, pady=2,
-                            command=lambda n=num: self.simultaneous_var.set(n))
-            btn.pack(side="left", padx=(0, 4))
-        
         # List Header Frame
         self.header_frame = ttk.Frame(self.main_container)
         self.header_frame.pack(fill="x", pady=(5, 5))
@@ -205,6 +191,16 @@ class ChromeProfileManagerApp:
         
         self.chrome_path_btn = ttk.Button(self.header_frame, text="⚙ Chrome", style="Normal.TButton", width=10, command=self.browse_chrome_path)
         self.chrome_path_btn.pack(side="right", anchor="e", padx=(0, 6))
+
+        # Simultaneous Count Group (Label + Combobox)
+        self.sim_header_frame = ttk.Frame(self.header_frame)
+        self.sim_header_frame.pack(side="right", anchor="e", padx=(0, 10))
+        
+        self.sim_lbl = ttk.Label(self.sim_header_frame, text="Cùng lúc:", style="TLabel")
+        self.sim_lbl.pack(side="left", padx=(0, 4))
+        
+        self.sim_combo = ttk.Combobox(self.sim_header_frame, textvariable=self.simultaneous_var, values=[2, 3, 4, 5, 6, 7, 8, 9], width=3, justify="center")
+        self.sim_combo.pack(side="left")
         
         # Scrollable List Frame (Treeview table)
         list_outer_frame = ttk.Frame(self.main_container, style="Card.TFrame")
@@ -321,9 +317,7 @@ class ChromeProfileManagerApp:
 
     def apply_responsive_layout(self, narrow):
         # Clean up Tab 1 configuration card grid settings
-        for widget in [self.web_lbl, self.web_entry, self.preset_frame, self.sim_frame]:
-            widget.grid_forget()
-        for widget in [self.sim_lbl, self.sim_entry, self.sim_preset_lbl, self.sim_preset_buttons_frame]:
+        for widget in [self.web_lbl, self.web_entry, self.preset_frame]:
             widget.grid_forget()
         
         # Clean up Tab 1 selection controls
@@ -347,18 +341,10 @@ class ChromeProfileManagerApp:
             self.web_lbl.grid(row=0, column=0, columnspan=3, sticky="w", pady=(5, 2))
             self.web_entry.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(2, 5))
             self.preset_frame.grid(row=2, column=0, columnspan=3, sticky="w", pady=(2, 8))
-            self.sim_frame.grid(row=3, column=0, columnspan=3, sticky="ew", pady=5)
             
             self.config_card.columnconfigure(0, weight=1)
             self.config_card.columnconfigure(1, weight=1)
             self.config_card.columnconfigure(2, weight=0)
-
-            # Narrow Sim frame grid
-            self.sim_lbl.grid(row=0, column=0, sticky="w", pady=2)
-            self.sim_entry.grid(row=0, column=1, sticky="w", padx=(5, 0), pady=2)
-            self.sim_preset_lbl.grid(row=1, column=0, sticky="w", pady=2)
-            self.sim_preset_buttons_frame.grid(row=1, column=1, sticky="w", padx=(5, 0), pady=2)
-
 
             
             # Narrow selection controls
@@ -407,17 +393,10 @@ class ChromeProfileManagerApp:
             self.web_lbl.grid(row=0, column=0, sticky="w", pady=5)
             self.web_entry.grid(row=0, column=1, columnspan=2, sticky="ew", pady=5, padx=(10, 0))
             self.preset_frame.grid(row=1, column=1, columnspan=2, sticky="w", pady=(2, 8), padx=(10, 0))
-            self.sim_frame.grid(row=2, column=0, columnspan=3, sticky="ew", pady=5)
             
             self.config_card.columnconfigure(0, weight=0)
             self.config_card.columnconfigure(1, weight=1)
             self.config_card.columnconfigure(2, weight=0)
-
-            # Wide Sim frame grid
-            self.sim_lbl.grid(row=0, column=0, sticky="w")
-            self.sim_entry.grid(row=0, column=1, sticky="w", padx=(5, 15))
-            self.sim_preset_lbl.grid(row=0, column=2, sticky="w")
-            self.sim_preset_buttons_frame.grid(row=0, column=3, sticky="w", padx=(5, 0))
 
 
             
