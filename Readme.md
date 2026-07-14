@@ -90,3 +90,59 @@ Nếu không sử dụng GitHub CLI, bạn thực hiện thủ công như sau:
    - Kéo thả file `chrome_profiles.exe` từ thư mục `dist/` vào khu vực **Attach binaries by dropping them here or selecting them**.
    - Nhấn **Publish release** để hoàn tất.
 
+---
+
+## Nhật ký thay đổi (Changelog) - Phiên bản v1.1.0
+
+Bản cập nhật lớn tái cấu trúc giao diện và nâng cấp trải nghiệm người dùng:
+
+- **Quản lý Profiles (Tab 1):**
+  - Đưa danh sách thư mục thực tế của Chrome về dạng bảng thông minh hỗ trợ hiển thị Email/Tên và Trạng thái.
+  - Hỗ trợ nhấn giữ và kéo chuột trái (drag-select) để bôi chọn nhanh nhiều profile.
+  - Nhấp đúp chuột trái (double-click) để mở nhanh profile tương ứng.
+  - Click chuột phải mở menu ngữ cảnh hỗ trợ mở nhanh hoặc xóa vĩnh viễn các profile đã chọn khỏi ổ cứng.
+  - Thu gọn thanh cấu hình, di chuyển hộp chọn số lượng "Cùng lúc" (từ 2 đến 9) và nút "Mở profile mới" lên thanh tiêu đề.
+  - Lọc bỏ hoàn toàn các profile hệ thống (`System Profile`, `Guest Profile`).
+
+- **Quản lý Extensions (Tab 2):**
+  - Chuyển đổi toàn bộ giao diện quản lý sang dạng bảng tính chỉnh sửa trực tiếp (Inline-editable spreadsheet) không cần form nhập liệu phụ.
+  - Luôn ghim dòng đầu tiên để thêm mới extension nhanh (`+ Thêm mới...`).
+  - Tự động lưu ngầm thay đổi vào file `.bat` sau khi dừng gõ phím 1 giây (Debounce Auto-save) không gây gián đoạn.
+  - Hỗ trợ bôi chọn nhiều dòng và click chuột phải để xóa.
+  - Tích hợp Import/Export dữ liệu từ file CSV (`chrome_extension.csv`) và nút chạy script Admin trực tiếp ngay góc trên bên phải của bảng.
+
+---
+
+## Hướng dẫn Cập nhật Phiên bản (Version Update & Release)
+
+Khi bạn thực hiện chỉnh sửa code và muốn cập nhật phiên bản mới lên GitHub, hãy thực hiện theo các bước sau:
+
+### Bước 1: Build lại file `.exe` mới
+```bash
+pyinstaller --noconsole --onefile chrome_profiles.py
+```
+
+### Bước 2: Cập nhật Tag Git (Ví dụ lên v1.1.0)
+Nếu bạn muốn tạo một tag mới trên Git:
+```bash
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+Nếu bạn muốn cập nhật đè (ghi đè) tag cũ đã tồn tại trên remote:
+```bash
+# Xóa tag cũ ở local và remote
+git tag -d v1.1.0
+git push --delete origin v1.1.0
+
+# Tạo lại tag mới và đẩy lên
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+### Bước 3: Đẩy bản Release mới lên GitHub
+Sử dụng GitHub CLI để tạo/cập nhật release đính kèm file exe mới:
+```bash
+gh release create v1.1.0 dist/chrome_profiles.exe --title "Release v1.1.0" --notes "Cập nhật các tính năng mới trong Changelog"
+```
+*(Nếu Release đã tồn tại và bạn muốn cập nhật đè file exe vào release đó, thêm tham số `--overwrite` hoặc upload đè: `gh release upload v1.1.0 dist/chrome_profiles.exe --clobber`)*
