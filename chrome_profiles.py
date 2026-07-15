@@ -7,13 +7,44 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
 CONFIG_DIR = os.path.join(os.environ.get("USERPROFILE", os.path.expanduser("~")), "dsoft", "chrome-profile-management")
-__version__ = "2.0.0"
+__version__ = "2.0.1"
 CONFIG_FILE = os.path.join(CONFIG_DIR, "chrome_profiles_config.json")
 BAT_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "old-refer-only", "chrome_all_profiles_must_install_extension_ids.bat")
 
 DEFAULT_CHROME_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 if not os.path.exists(DEFAULT_CHROME_PATH):
     DEFAULT_CHROME_PATH = r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
+
+def get_extension_name_from_path(ext_dir_path):
+    try:
+        versions = os.listdir(ext_dir_path)
+        if not versions:
+            return ""
+        # pick the first version folder
+        ver_dir = os.path.join(ext_dir_path, versions[0])
+        manifest_path = os.path.join(ver_dir, "manifest.json")
+        if os.path.exists(manifest_path):
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                manifest = json.load(f)
+            name = manifest.get("name", "")
+            if name.startswith("__MSG_") and name.endswith("__"):
+                key = name[6:-2]
+                locales_dir = os.path.join(ver_dir, "_locales")
+                if os.path.exists(locales_dir):
+                    locale_subdirs = os.listdir(locales_dir)
+                    locale_subdirs.sort(key=lambda x: 0 if x.lower() in ("vi", "en", "en_us") else 1)
+                    for locale in locale_subdirs:
+                        msg_path = os.path.join(locales_dir, locale, "messages.json")
+                        if os.path.exists(msg_path):
+                            with open(msg_path, "r", encoding="utf-8") as mf:
+                                messages = json.load(mf)
+                                for k, v in messages.items():
+                                    if k.lower() == key.lower():
+                                        return v.get("message", "")
+            return name
+    except Exception:
+        pass
+    return os.path.basename(ext_dir_path)
 
 class ChromeProfileManagerApp:
     def __init__(self, root):
@@ -230,6 +261,7 @@ class ChromeProfileManagerApp:
         # Right-click Context Menu
         self.profile_context_menu = tk.Menu(self.profile_tree, tearoff=0, bg=self.card_color, fg=self.text_color, activebackground=self.accent_color, activeforeground="#ffffff")
         self.profile_context_menu.add_command(label="Mở các profile đã chọn", command=self.open_selected_profiles)
+        self.profile_context_menu.add_command(label="Xem các extension đã cài", command=self.show_profile_extensions_in_extensions_tab)
         self.profile_context_menu.add_separator()
         self.profile_context_menu.add_command(label="Xóa các profile đã chọn", command=self.delete_selected_profiles)
         self.profile_tree.bind("<Button-3>", self.show_profile_context_menu)
@@ -605,6 +637,73 @@ class ChromeProfileManagerApp:
                 self.bat_footer = lines
         except Exception as e:
             print(f"Error loading extensions: {e}")
+            
+        # FALLBACK: If extensions list is empty, scan local Default profile extensions
+        if not self.extensions:
+            self.load_extensions_from_default_profile()
+
+    def load_extensions_from_default_profile(self):
+        default_ext_dir = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data\Default\Extensions")
+        if not os.path.exists(default_ext_dir):
+            return
+            
+        loaded_any = False
+        try:
+            for entry in os.scandir(default_ext_dir):
+                if entry.is_dir():
+                    ext_id = entry.name
+                    # Ensure ID is a valid extension ID (32 lowercase letters)
+                    if len(ext_id) == 32 and ext_id.isalpha():
+                        name = get_extension_name_from_path(entry.path)
+                        if not any(e["id"] == ext_id for e in self.extensions):
+                            self.extensions.append({"name": name or ext_id, "id": ext_id})
+                            loaded_any = True
+        except Exception as e:
+            print(f"Error scanning default profile extensions: {e}")
+            
+        if loaded_any:
+            # If the BAT headers/footers are empty, initialize default templates
+            if not self.bat_header:
+                self.bat_header = [
+                    "@echo off\n",
+                    "chcp 65001>nul\n",
+                    "setlocal EnableDelayedExpansion\n",
+                    "\n",
+                    "echo ========================================================================\n",
+                    "echo CHROME CONFIGURATION SCRIPT (YEU CAU QUYEN ADMINISTRATOR)\n",
+                    "echo Bat buoc duy tri kien truc Manifest V2 va tu dong bat Extensions\n",
+                    "echo ========================================================================\n",
+                    "\n",
+                    "echo.\n",
+                    "echo Dang mo khoa ho tro Manifest V2...\n",
+                    'reg add "HKLM\\SOFTWARE\\Policies\\Google\\Chrome" /v ExtensionManifestV2Availability /t REG_DWORD /d 2 /f >nul 2>&1\n',
+                    "\n",
+                    "echo.\n",
+                    "echo Dang ep buoc tai va tu dong bat toan bo Extension trong danh sach...\n",
+                    "\n",
+                    'set "EXT_LIST="\n'
+                ]
+            if not self.bat_footer:
+                self.bat_footer = [
+                    "set /a count=1\n",
+                    "for %%i in (%EXT_LIST%) do (\n",
+                    "    echo - Dang cau hinh de tu dong bat ID: %%i\n",
+                    "    :: Dua vao Whitelist de chan canh bao Developer Mode\n",
+                    '    reg add "HKLM\\Software\\Policies\\Google\\Chrome\\ExtensionInstallWhitelist" /v "!count!" /t REG_SZ /d "%%i" /f >nul 2>&1\n',
+                    "    :: Ep buoc luon kich hoat o trang thai ENABLED\n",
+                    '    reg add "HKLM\\SOFTWARE\\Policies\\Google\\Chrome\\ExtensionInstallForcelist" /v "!count!" /t REG_SZ /d "%%i;https://clients2.google.com/service/update2/crx" /f >nul 2>&1\n',
+                    "    set /a count+=1\n",
+                    ")\n",
+                    "\n",
+                    "echo.\n",
+                    "echo ========================================================================\n",
+                    "echo HOAN TAT CAU HINH EXTENSIONS. Vui long khoi dong lai Google Chrome. (exit sau 5 giay)\n",
+                    "echo ========================================================================\n",
+                    "@REM sẽ thoát chương trình sau 5 giây\n",
+                    "timeout /t 5 >nul\n"
+                ]
+            # Save newly loaded default extensions to the bat file
+            self.save_extensions_to_bat(silent=True)
 
     def save_extensions_to_bat(self, silent=False):
         try:
@@ -893,6 +992,45 @@ class ChromeProfileManagerApp:
                 break
                 
         print(f"Đã mở {opened_count} profiles đã chọn.")
+
+    def show_profile_extensions_in_extensions_tab(self):
+        selected_items = self.profile_tree.selection()
+        if not selected_items:
+            messagebox.showwarning("Cảnh báo", "Vui lòng chọn một profile trong bảng.")
+            return
+            
+        values = self.profile_tree.item(selected_items[0], "values")
+        dir_name = values[0]
+        if dir_name == "Không có profile nào":
+            return
+            
+        user_data_path = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data")
+        ext_dir = os.path.join(user_data_path, dir_name, "Extensions")
+        
+        if not os.path.exists(ext_dir):
+            messagebox.showinfo("Thông tin", f"Profile '{dir_name}' chưa cài đặt extension nào hoặc thư mục Extensions không tồn tại.")
+            return
+            
+        scanned_extensions = []
+        try:
+            for entry in os.scandir(ext_dir):
+                if entry.is_dir():
+                    ext_id = entry.name
+                    if len(ext_id) == 32 and ext_id.isalpha():
+                        name = get_extension_name_from_path(entry.path)
+                        scanned_extensions.append({"name": name or ext_id, "id": ext_id})
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"Không thể quét danh sách extension: {e}")
+            return
+            
+        if not scanned_extensions:
+            messagebox.showinfo("Thông tin", f"Không tìm thấy extension nào trong profile '{dir_name}'.")
+            return
+            
+        self.extensions = scanned_extensions
+        self.populate_treeview()
+        self.notebook.select(self.tab_extensions)
+        self.debounce_save_extensions()
 
     def show_profile_context_menu(self, event):
         item_under_mouse = self.profile_tree.identify_row(event.y)
