@@ -7,7 +7,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
 CONFIG_DIR = os.path.join(os.environ.get("USERPROFILE", os.path.expanduser("~")), "dsoft", "chrome-profile-management")
-__version__ = "1.2.0"
+__version__ = "2.0.0"
 CONFIG_FILE = os.path.join(CONFIG_DIR, "chrome_profiles_config.json")
 BAT_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "old-refer-only", "chrome_all_profiles_must_install_extension_ids.bat")
 

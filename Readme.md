@@ -164,7 +164,7 @@ python windows_management.py
 
 ---
 
-## Nhật ký thay đổi (Changelog) - Phiên bản v1.2.0 (Windows Debloat Manager)
+## Nhật ký thay đổi (Changelog) - Phiên bản v2.0.0 (Windows Debloat Manager)
 # Chrome Profiles Manager
 
 Phần mềm quản lý và mở hàng loạt Profile Chrome với giao diện tối giản (Dark Mode) viết bằng Python & Tkinter.
@@ -289,7 +289,7 @@ python build.py
    ```
 2. Sử dụng GitHub CLI để tạo release và upload các file exe mới:
    ```bash
-   gh release create v1.2.0 dist/chrome_profiles.exe dist/windows_management.exe --title "Release v1.2.0" --notes "Cập nhật các tính năng mới trong Changelog"
+   gh release create v2.0.0 dist/chrome_profiles.exe dist/windows_management.exe --title "Release v2.0.0" --notes "Cập nhật các tính năng mới trong Changelog"
    ```
 *(Nếu Release đã tồn tại và bạn muốn cập nhật đè file exe vào release đó, thêm tham số `--overwrite` hoặc upload đè: `gh release upload v1.1.0 dist/chrome_profiles.exe dist/windows_management.exe --clobber`)*
 
@@ -309,7 +309,7 @@ python windows_management.py
 
 ---
 
-## Nhật ký thay đổi (Changelog) - Phiên bản v1.2.0 (Windows Debloat Manager)
+## Nhật ký thay đổi (Changelog) - Phiên bản v2.0.0 (Windows Debloat Manager)
 - **Quản lý Debloat (Tab 1):**
   - Tải danh sách mặc định gồm hơn 60+ ứng dụng debloatware phổ biến của Windows từ script PowerShell.
   - Hỗ trợ lưu trữ danh sách cá nhân hóa trong thư mục người dùng (`%USERPROFILE%\dsoft\windows-debloat-management\windows_debloat_config.json`).
