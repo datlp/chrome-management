@@ -162,12 +162,7 @@ class RcloneManagementApp:
         self.tab_config = ttk.Frame(self.notebook)
         self.notebook.add(self.tab_config, text="Cấu hình Rclone")
         
-        # Tab 2: Tailscale API
-        self.tab_tailscale = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_tailscale, text="Kết nối Tailscale")
-        
         self.build_tab_config()
-        self.build_tab_tailscale()
 
     def build_tab_config(self):
         container = ttk.Frame(self.tab_config, padding=20)
