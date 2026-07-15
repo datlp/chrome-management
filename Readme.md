@@ -269,35 +269,28 @@ Bản cập nhật lớn tái cấu trúc giao diện và nâng cấp trải ngh
 
 Khi bạn thực hiện chỉnh sửa code và muốn cập nhật phiên bản mới lên GitHub, hãy thực hiện theo các bước sau:
 
-### Bước 1: Build lại file `.exe` mới
+### Bước 1: Cập nhật phiên bản và Tag Git tự động
+Chạy lệnh sau để tăng phiên bản (ví dụ tăng patch `1.2.0` -> `1.2.1`):
 ```bash
-pyinstaller --noconsole --onefile chrome_profiles.py
-pyinstaller --noconsole --onefile windows_management.py
+python upversion.py patch
 ```
+*(Bạn cũng có thể dùng tham số `minor` hoặc `major`, hoặc chạy không tham số `python upversion.py` để nhập thủ công).*
+Script này sẽ tự động thay đổi phiên bản trong `version.txt`, `chrome_profiles.py`, `windows_management.py`, `Readme.md` và chạy lệnh `git commit`, `git tag` cục bộ.
 
-### Bước 2: Cập nhật Tag Git (Ví dụ lên v1.1.0)
-Nếu bạn muốn tạo một tag mới trên Git:
+### Bước 2: Build lại file `.exe` mới
 ```bash
-git tag v1.1.0
-git push origin v1.1.0
-```
-
-Nếu bạn muốn cập nhật đè (ghi đè) tag cũ đã tồn tại trên remote:
-```bash
-# Xóa tag cũ ở local và remote
-git tag -d v1.1.0
-git push --delete origin v1.1.0
-
-# Tạo lại tag mới và đẩy lên
-git tag v1.1.0
-git push origin v1.1.0
+python build.py
 ```
 
 ### Bước 3: Đẩy bản Release mới lên GitHub
-Sử dụng GitHub CLI để tạo/cập nhật release đính kèm file exe mới:
-```bash
-gh release create v1.1.0 dist/chrome_profiles.exe dist/windows_management.exe --title "Release v1.1.0" --notes "Cập nhật các tính năng mới trong Changelog"
-```
+1. Đẩy mã nguồn và thẻ Tag mới lên remote repository:
+   ```bash
+   git push origin main --tags
+   ```
+2. Sử dụng GitHub CLI để tạo release và upload các file exe mới:
+   ```bash
+   gh release create v1.2.0 dist/chrome_profiles.exe dist/windows_management.exe --title "Release v1.2.0" --notes "Cập nhật các tính năng mới trong Changelog"
+   ```
 *(Nếu Release đã tồn tại và bạn muốn cập nhật đè file exe vào release đó, thêm tham số `--overwrite` hoặc upload đè: `gh release upload v1.1.0 dist/chrome_profiles.exe dist/windows_management.exe --clobber`)*
 
 ---

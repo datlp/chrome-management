@@ -10,6 +10,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
 CONFIG_DIR = os.path.join(os.environ.get("USERPROFILE", os.path.expanduser("~")), "dsoft", "windows-debloat-management")
+__version__ = "1.2.0"
 CONFIG_FILE = os.path.join(CONFIG_DIR, "windows_debloat_config.json")
 
 DEFAULT_APPS = [
