@@ -18,7 +18,19 @@ def install_pyinstaller():
             print(f"Error installing PyInstaller: {e}")
             sys.exit(1)
 
-def build_exe(script_name):
+def download_winfsp():
+    winfsp_path = "winfsp.msi"
+    if not os.path.exists(winfsp_path):
+        print("Downloading WinFSP installer to bundle...")
+        url = "https://github.com/winfsp/winfsp/releases/download/v2.0/winfsp-2.0.23075.msi"
+        try:
+            import urllib.request
+            urllib.request.urlretrieve(url, winfsp_path)
+            print("Downloaded WinFSP successfully.")
+        except Exception as e:
+            print(f"Error downloading WinFSP: {e}")
+
+def build_exe(script_name, extra_args=None):
     print(f"\nBuilding {script_name} to standalone EXE...")
     if not os.path.exists(script_name):
         print(f"Error: {script_name} does not exist in the current directory.")
@@ -27,9 +39,12 @@ def build_exe(script_name):
     cmd = [
         "pyinstaller",
         "--noconsole",
-        "--onefile",
-        script_name
+        "--onefile"
     ]
+    if extra_args:
+        cmd.extend(extra_args)
+    cmd.append(script_name)
+    
     try:
         subprocess.run(cmd, check=True)
         print(f"Successfully compiled {script_name} to EXE.")
@@ -67,12 +82,17 @@ if __name__ == "__main__":
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     
     install_pyinstaller()
+    download_winfsp()
     
-    targets = ["chrome_profiles.py", "windows_management.py"]
+    targets = {
+        "chrome_profiles.py": [],
+        "windows_management.py": [],
+        "rclone_management.py": ["--add-data", "winfsp.msi;."]
+    }
     success_count = 0
     
-    for target in targets:
-        if build_exe(target):
+    for target, extra_args in targets.items():
+        if build_exe(target, extra_args):
             success_count += 1
             clean_temp_files(target)
             
