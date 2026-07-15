@@ -756,117 +756,120 @@ class RcloneManagementApp:
         if has_tailscale_remote:
             self.ensure_tailscale_running()
             
-        # 3. Mount each remote
+        # 3. Mount each remote in a separate thread in parallel
         for item in selected_items:
-            try:
-                idx = int(item.split("_")[1])
-                remote = self.remotes[idx]
-                name = remote["name"]
-                disk = remote["disk_letter"]
-                host = remote.get("host", "")
-                folder = remote.get("folder", "/")
-                
-                if not disk:
-                    self.root.after(0, lambda n=name: messagebox.showerror("Lỗi", f"Vui lòng định cấu hình ký tự ổ đĩa cho remote {n}"))
-                    continue
-                    
-                if disk in self.active_mounts:
-                    # Already mounted
-                    continue
-                    
-                self.root.after(0, lambda it=item: self.tree.set(it, "Status", "Checking connection..."))
-                
-                # Check host reachability
-                reachable = False
-                for _ in range(10):
-                    if self.is_host_reachable(host):
-                        reachable = True
-                        break
-                    time.sleep(1)
-                    
-                if not reachable:
-                    self.root.after(0, lambda it=item: self.tree.set(it, "Status", "Failed"))
-                    self.root.after(0, lambda n=name, h=host: messagebox.showerror(
-                        "Lỗi kết nối", 
-                        f"Không thể kết nối tới {h} (Remote: '{n}').\nVui lòng kiểm tra kết nối mạng hoặc dịch vụ Tailscale."
-                    ))
-                    continue
-                
-                self.root.after(0, lambda it=item: self.tree.set(it, "Status", "Mounting..."))
-                
-                # Start rclone mount in background
-                rclone_path = "rclone"  # Assume in PATH
-                rclone_folder = folder.lstrip("/")
-                remote_path = f"{name}:{rclone_folder}" if rclone_folder else f"{name}:"
-                
-                log_file = os.path.join(CONFIG_DIR, f"rclone_mount_{disk}.log")
-                cmd = [
-                    rclone_path,
-                    "mount",
-                    remote_path,
-                    f"{disk}:",
-                    "--vfs-cache-mode", "writes",
-                    "--config", RCLONE_CONF_FILE,
-                    "--log-file", log_file,
-                    "--log-level", "INFO"
-                ]
-                
-                # Run process
-                proc = subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    creationflags=subprocess.CREATE_NO_WINDOW
-                )
-                
-                self.active_mounts[disk] = proc
-                remote["status"] = "Mounted"
-                self.root.after(0, lambda it=item: self.tree.set(it, "Status", "Mounted"))
-                
-                # Check for early process exit in a background thread
-                def check_proc(p, r_name, r_item, r_disk):
-                    try:
-                        time.sleep(2.0)
-                        poll = p.poll()
-                        if poll is not None:
-                            # Process exited, mount failed
-                            err_output = p.stderr.read().decode("utf-8", errors="replace").strip()
-                            
-                            log_path = os.path.join(CONFIG_DIR, f"rclone_mount_{r_disk}.log")
-                            if not err_output and os.path.exists(log_path):
-                                try:
-                                    with open(log_path, "r", encoding="utf-8", errors="replace") as lf:
-                                        lines = lf.readlines()
-                                        err_output = "".join(lines[-10:]).strip()
-                                except Exception:
-                                    pass
-                                    
-                            if r_disk in self.active_mounts:
-                                del self.active_mounts[r_disk]
-                            
-                            self.root.after(0, lambda: self.tree.set(r_item, "Status", "Failed"))
-                            
-                            msg = f"Gắn ổ đĩa {r_disk}: cho remote '{r_name}' thất bại!\n\n"
-                            if "winfsp" in err_output.lower() or "fuse" in err_output.lower():
-                                msg += "LỖI: Rclone yêu cầu phần mềm WinFSP để gắn ổ đĩa ảo trên Windows.\nVui lòng cài đặt WinFSP (https://winfsp.dev/) và khởi động lại máy."
-                            elif "network host" in err_output.lower() or "connection refused" in err_output.lower() or "connect: connection refused" in err_output.lower():
-                                msg += "LỖI: Không thể kết nối tới IP/Cổng của remote. Hãy kiểm tra xem thiết bị Tailscale đã online chưa."
-                            elif err_output:
-                                msg += f"Chi tiết lỗi từ Rclone Log:\n{err_output}"
-                            else:
-                                msg += "Rclone kết thúc đột ngột mà không ghi lại mã lỗi."
-                                
-                            self.root.after(0, lambda m=msg: messagebox.showerror("Lỗi Rclone Mount", m))
-                    except Exception as ex:
-                        print(f"Error checking rclone proc: {ex}")
+            threading.Thread(target=self._mount_single_remote, args=(item,), daemon=True).start()
 
-                threading.Thread(target=check_proc, args=(proc, name, item, disk), daemon=True).start()
-            except FileNotFoundError:
+    def _mount_single_remote(self, item):
+        try:
+            idx = int(item.split("_")[1])
+            remote = self.remotes[idx]
+            name = remote["name"]
+            disk = remote["disk_letter"]
+            host = remote.get("host", "")
+            folder = remote.get("folder", "/")
+            
+            if not disk:
+                self.root.after(0, lambda n=name: messagebox.showerror("Lỗi", f"Vui lòng định cấu hình ký tự ổ đĩa cho remote {n}"))
+                return
+                
+            if disk in self.active_mounts:
+                # Already mounted
+                return
+                
+            self.root.after(0, lambda it=item: self.tree.set(it, "Status", "Checking connection..."))
+            
+            # Check host reachability
+            reachable = False
+            for _ in range(10):
+                if self.is_host_reachable(host):
+                    reachable = True
+                    break
+                time.sleep(1)
+                
+            if not reachable:
                 self.root.after(0, lambda it=item: self.tree.set(it, "Status", "Failed"))
-                self.root.after(0, lambda: messagebox.showerror("Lỗi", "Không tìm thấy chương trình 'rclone' trên máy tính.\n\nVui lòng tải Rclone và thêm thư mục chứa rclone.exe vào biến môi trường PATH hệ thống."))
-            except Exception as e:
-                self.root.after(0, lambda it=item: self.tree.set(it, "Status", "Failed"))
-                self.root.after(0, lambda ex=e: messagebox.showerror("Lỗi", f"Không thể gắn ổ đĩa: {ex}"))
+                self.root.after(0, lambda n=name, h=host: messagebox.showerror(
+                    "Lỗi kết nối", 
+                    f"Không thể kết nối tới {h} (Remote: '{n}').\nVui lòng kiểm tra kết nối mạng hoặc dịch vụ Tailscale."
+                ))
+                return
+            
+            self.root.after(0, lambda it=item: self.tree.set(it, "Status", "Mounting..."))
+            
+            # Start rclone mount in background
+            rclone_path = "rclone"  # Assume in PATH
+            rclone_folder = folder.lstrip("/")
+            remote_path = f"{name}:{rclone_folder}" if rclone_folder else f"{name}:"
+            
+            log_file = os.path.join(CONFIG_DIR, f"rclone_mount_{disk}.log")
+            cmd = [
+                rclone_path,
+                "mount",
+                remote_path,
+                f"{disk}:",
+                "--vfs-cache-mode", "writes",
+                "--config", RCLONE_CONF_FILE,
+                "--log-file", log_file,
+                "--log-level", "INFO"
+            ]
+            
+            # Run process
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+            
+            self.active_mounts[disk] = proc
+            remote["status"] = "Mounted"
+            self.root.after(0, lambda it=item: self.tree.set(it, "Status", "Mounted"))
+            
+            # Check for early process exit in a background thread
+            def check_proc(p, r_name, r_item, r_disk):
+                try:
+                    time.sleep(2.0)
+                    poll = p.poll()
+                    if poll is not None:
+                        # Process exited, mount failed
+                        err_output = p.stderr.read().decode("utf-8", errors="replace").strip()
+                        
+                        log_path = os.path.join(CONFIG_DIR, f"rclone_mount_{r_disk}.log")
+                        if not err_output and os.path.exists(log_path):
+                            try:
+                                with open(log_path, "r", encoding="utf-8", errors="replace") as lf:
+                                    lines = lf.readlines()
+                                    err_output = "".join(lines[-10:]).strip()
+                            except Exception:
+                                pass
+                                
+                        if r_disk in self.active_mounts:
+                            del self.active_mounts[r_disk]
+                        
+                        self.root.after(0, lambda: self.tree.set(r_item, "Status", "Failed"))
+                        
+                        msg = f"Gắn ổ đĩa {r_disk}: cho remote '{r_name}' thất bại!\n\n"
+                        if "winfsp" in err_output.lower() or "fuse" in err_output.lower():
+                            msg += "LỖI: Rclone yêu cầu phần mềm WinFSP để gắn ổ đĩa ảo trên Windows.\nVui lòng cài đặt WinFSP (https://winfsp.dev/) và khởi động lại máy."
+                        elif "network host" in err_output.lower() or "connection refused" in err_output.lower() or "connect: connection refused" in err_output.lower():
+                            msg += "LỖI: Không thể kết nối tới IP/Cổng của remote. Hãy kiểm tra xem thiết bị Tailscale đã online chưa."
+                        elif err_output:
+                            msg += f"Chi tiết lỗi từ Rclone Log:\n{err_output}"
+                        else:
+                            msg += "Rclone kết thúc đột ngột mà không ghi lại mã lỗi."
+                            
+                        self.root.after(0, lambda m=msg: messagebox.showerror("Lỗi Rclone Mount", m))
+                except Exception as ex:
+                    print(f"Error checking rclone proc: {ex}")
+
+            threading.Thread(target=check_proc, args=(proc, name, item, disk), daemon=True).start()
+        except FileNotFoundError:
+            self.root.after(0, lambda it=item: self.tree.set(it, "Status", "Failed"))
+            self.root.after(0, lambda: messagebox.showerror("Lỗi", "Không tìm thấy chương trình 'rclone' trên máy tính.\n\nVui lòng tải Rclone và thêm thư mục chứa rclone.exe vào biến môi trường PATH hệ thống."))
+        except Exception as e:
+            self.root.after(0, lambda it=item: self.tree.set(it, "Status", "Failed"))
+            self.root.after(0, lambda ex=e: messagebox.showerror("Lỗi", f"Không thể gắn ổ đĩa: {ex}"))
 
     def unmount_selected_remotes(self):
         selected_items = [item for item in self.tree.selection() if item.startswith("remote_")]
