@@ -82,7 +82,15 @@ class RcloneManagementApp:
         import sys
         self.is_silent = "--silent" in sys.argv
         if self.is_silent:
-            self.root.iconify()
+            self.root.withdraw()
+        
+        # Override window close behavior and minimize state
+        self.root.protocol("WM_DELETE_WINDOW", self.on_window_closing)
+        self.root.bind("<Unmap>", lambda e: self.on_window_state_change(e))
+        
+        # Initialize and setup system tray
+        self.tray_icon = None
+        self.setup_system_tray()
         
         # Start periodic mount check thread
         self.running_status_check = True
@@ -264,7 +272,7 @@ class RcloneManagementApp:
         
         # Event bindings
         self.tree.bind("<Button-1>", self.on_tree_click)
-        self.tree.bind("<Double-1>", lambda e: self.mount_selected_remotes())
+        self.tree.bind("<Double-1>", self.on_tree_double_click)
         
         # Context Menu
         self.context_menu = tk.Menu(self.tree, tearoff=0, bg=self.card_color, fg=self.text_color, activebackground=self.accent_color, activeforeground="#ffffff")
@@ -1471,18 +1479,98 @@ class RcloneManagementApp:
         except Exception as e:
             messagebox.showerror("Lỗi", f"Không thể nhập file rclone.conf: {e}")
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = RcloneManagementApp(root)
-    # Stop periodic check when window closes
-    def on_closing():
-        app.running_status_check = False
+    def on_tree_double_click(self, event):
+        item = self.tree.identify_row(event.y)
+        if not item or item == "__add_row__":
+            return
+            
+        try:
+            idx = int(item.split("_")[1])
+            remote = self.remotes[idx]
+            status = remote.get("status", "Disconnected")
+            disk = remote.get("disk_letter", "")
+            
+            if status == "Mounted" and disk:
+                # Open the drive in Windows Explorer
+                drive_path = f"{disk}:\\"
+                if os.path.exists(drive_path):
+                    os.startfile(drive_path)
+                else:
+                    messagebox.showwarning("Cảnh báo", f"Ổ đĩa {disk}: được đánh dấu là mounted nhưng hệ thống chưa sẵn sàng truy cập.")
+            else:
+                # Mount the drive
+                self.mount_selected_remotes()
+        except Exception as e:
+            print(f"Error handling double click: {e}")
+
+    def create_tray_image(self):
+        from PIL import Image, ImageDraw
+        img = Image.new('RGBA', (64, 64), color=(0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        # Draw a beautiful circle with accent color #00adb5
+        draw.ellipse([4, 4, 60, 60], fill=(0, 173, 181, 255))
+        # Draw an inner dark circle
+        draw.ellipse([14, 14, 50, 50], fill=(30, 30, 30, 255))
+        # Draw a smaller accent circle to make it look like a disk platter
+        draw.ellipse([24, 24, 40, 40], fill=(0, 173, 181, 255))
+        return img
+
+    def setup_system_tray(self):
+        import threading
+        try:
+            import pystray
+            image = self.create_tray_image()
+            menu = pystray.Menu(
+                pystray.MenuItem("Hiện cửa sổ", self.show_window, default=True),
+                pystray.MenuItem("Gắn tất cả ổ đĩa", lambda icon, item: self.auto_mount_all_configured()),
+                pystray.MenuItem("Gỡ tất cả ổ đĩa", lambda icon, item: self.unmount_all_configured()),
+                pystray.MenuItem("Thoát", self.exit_app)
+            )
+            self.tray_icon = pystray.Icon("RcloneDiskManager", image, "Rclone & Tailscale Disk Manager", menu)
+            # Run the system tray icon in a daemon thread
+            threading.Thread(target=self.tray_icon.run, daemon=True).start()
+        except Exception as e:
+            print(f"Error setting up system tray: {e}")
+
+    def show_window(self, icon=None, item=None):
+        self.root.after(0, self._deiconify_window)
+        
+    def _deiconify_window(self):
+        self.root.deiconify()
+        self.root.state('normal')
+        self.root.focus_force()
+
+    def hide_to_tray(self):
+        self.root.withdraw()
+
+    def on_window_state_change(self, event=None):
+        if event and event.widget == self.root:
+            if self.root.state() == 'iconic':
+                self.root.withdraw()
+
+    def on_window_closing(self):
+        self.hide_to_tray()
+
+    def exit_app(self, icon=None, item=None):
+        self.running_status_check = False
         # Clean mount processes
-        for disk, proc in app.active_mounts.items():
+        for disk, proc in list(self.active_mounts.items()):
             try:
                 proc.terminate()
             except Exception:
                 pass
-        root.destroy()
-    root.protocol("WM_DELETE_WINDOW", on_closing)
+        if self.tray_icon:
+            self.tray_icon.stop()
+        self.root.after(0, self.root.destroy)
+
+    def unmount_all_configured(self):
+        # Select all configured remotes and unmount
+        children = [c for c in self.tree.get_children() if c != "__add_row__"]
+        if children:
+            self.tree.selection_set(children)
+            self.unmount_selected_remotes()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = RcloneManagementApp(root)
     root.mainloop()

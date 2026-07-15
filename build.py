@@ -3,10 +3,9 @@ import sys
 import shutil
 import subprocess
 
-def install_pyinstaller():
+def install_dependencies():
     print("Checking for PyInstaller...")
     try:
-        # Check if PyInstaller can be run
         subprocess.run(["pyinstaller", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, creationflags=subprocess.CREATE_NO_WINDOW)
         print("PyInstaller is already installed and accessible.")
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -17,6 +16,19 @@ def install_pyinstaller():
         except subprocess.CalledProcessError as e:
             print(f"Error installing PyInstaller: {e}")
             sys.exit(1)
+            
+    print("Checking for pystray and pillow...")
+    try:
+        import pystray
+        import PIL
+        print("pystray and pillow are already installed.")
+    except ImportError:
+        print("Installing pystray and pillow via pip...")
+        try:
+            subprocess.run([sys.executable, "-m", "pip", "install", "pystray", "pillow"], check=True)
+            print("pystray and pillow installed successfully.")
+        except subprocess.CalledProcessError as e:
+            print(f"Warning: Could not install system tray dependencies: {e}")
 
 def download_winfsp():
     winfsp_path = "winfsp.msi"
@@ -81,7 +93,7 @@ if __name__ == "__main__":
     # Ensure working directory is the script's directory
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     
-    install_pyinstaller()
+    install_dependencies()
     download_winfsp()
     
     targets = {
