@@ -5,6 +5,7 @@ import time
 import csv
 import threading
 import fnmatch
+import winreg
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
@@ -335,6 +336,74 @@ class WindowsDebloatManagerApp:
                                             activebackground="#218838", activeforeground="#ffffff", relief="flat", bd=0,
                                             font=("Segoe UI", 10, "bold"), padx=15, pady=6, command=self.add_system_package_to_debloat)
         self.btn_add_to_debloat.pack(side="right")
+
+        # ==========================================
+        # TAB 3: Target Release Version UI Construction
+        # ==========================================
+        self.tab_target = ttk.Frame(self.notebook)
+        self.notebook.add(self.tab_target, text="Target Release Version")
+
+        self.target_container = ttk.Frame(self.tab_target, padding=20)
+        self.target_container.pack(fill="both", expand=True)
+        
+        # Header Tab 3
+        tgt_header_frame = ttk.Frame(self.target_container)
+        tgt_header_frame.pack(fill="x", pady=(0, 15))
+        
+        ttk.Label(tgt_header_frame, text="LỰA CHỌN PHIÊN BẢN CẬP NHẬT TARGET", style="Header.TLabel").pack(side="left")
+        
+        self.btn_refresh_target = ttk.Button(tgt_header_frame, text="⟳ Làm mới", style="Accent.TButton", command=self.update_target_tab_status)
+        self.btn_refresh_target.pack(side="right")
+        
+        # OS Info Card
+        os_card = ttk.Frame(self.target_container, style="Card.TFrame", padding=15)
+        os_card.pack(fill="x", pady=(0, 15))
+        
+        self.lbl_current_os = ttk.Label(os_card, text="Hệ điều hành hiện tại: Đang dò...", style="Card.TLabel", font=("Segoe UI", 11, "bold"))
+        self.lbl_current_os.pack(anchor="w", pady=(0, 5))
+        
+        self.lbl_current_build = ttk.Label(os_card, text="Phiên bản build: -", style="Card.TLabel")
+        self.lbl_current_build.pack(anchor="w", pady=(0, 5))
+        
+        self.lbl_registry_target = ttk.Label(os_card, text="Giới hạn Target hiện tại (Registry): -", style="Card.TLabel", foreground=self.accent_color)
+        self.lbl_registry_target.pack(anchor="w")
+        
+        # Dropdown Selection Card
+        select_card = ttk.Frame(self.target_container, style="Card.TFrame", padding=15)
+        select_card.pack(fill="x", pady=(0, 15))
+        
+        ttk.Label(select_card, text="Chọn Target Release Version để giới hạn nâng cấp:", style="Card.TLabel").pack(anchor="w", pady=(0, 10))
+        
+        self.target_options = [
+            "Windows 10 21H2",
+            "Windows 10 22H2",
+            "Windows 11 21H2",
+            "Windows 11 22H2",
+            "Windows 11 23H2",
+            "Windows 11 24H2",
+            "Windows 11 26H2",
+            "Disable Target Release (Không giới hạn)"
+        ]
+        self.target_combo_var = tk.StringVar()
+        self.target_combo = ttk.Combobox(select_card, textvariable=self.target_combo_var, values=self.target_options, state="readonly", font=("Segoe UI", 10), width=40)
+        self.target_combo.pack(anchor="w", pady=(0, 15))
+        
+        # Action Buttons
+        act_frame = ttk.Frame(select_card)
+        act_frame.pack(anchor="w")
+        
+        self.btn_apply_target = tk.Button(act_frame, text="ÁP DỤNG CẤU HÌNH (Admin)", bg=self.accent_color, fg="#ffffff",
+                                          activebackground=self.accent_hover, activeforeground="#ffffff", relief="flat", bd=0,
+                                          font=("Segoe UI", 10, "bold"), padx=15, pady=6, command=self.apply_target_release)
+        self.btn_apply_target.pack(side="left", padx=(0, 10))
+        
+        self.btn_remove_target = tk.Button(act_frame, text="XÓA KHÓA GIỚI HẠN", bg="#d9534f", fg="#ffffff",
+                                           activebackground="#c9302c", activeforeground="#ffffff", relief="flat", bd=0,
+                                           font=("Segoe UI", 10, "bold"), padx=15, pady=6, command=self.remove_target_release)
+        self.btn_remove_target.pack(side="left")
+        
+        # Initialize target status display
+        self.update_target_tab_status()
 
     # ==========================================
     # DEBLOAT MANAGER METHODS (TAB 1)
@@ -927,6 +996,147 @@ class WindowsDebloatManagerApp:
                 self.root.after(0, self.scan_system_packages)
 
         threading.Thread(target=run_direct_uninstall, daemon=True).start()
+
+    # ==========================================
+    # TARGET RELEASE VERSION REGISTRY METHODS (TAB 3)
+    # ==========================================
+    def get_windows_version_details(self):
+        try:
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows NT\CurrentVersion") as key:
+                product_name = winreg.QueryValueEx(key, "ProductName")[0]
+                try:
+                    display_version = winreg.QueryValueEx(key, "DisplayVersion")[0]
+                except FileNotFoundError:
+                    display_version = ""
+                current_build = winreg.QueryValueEx(key, "CurrentBuild")[0]
+                try:
+                    ubr = winreg.QueryValueEx(key, "UBR")[0]
+                except FileNotFoundError:
+                    ubr = ""
+                return product_name, display_version, current_build, ubr
+        except Exception as e:
+            print(f"Error reading Windows NT CurrentVersion: {e}")
+            return "Windows", "", "", ""
+
+    def get_registry_target_release(self):
+        try:
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate") as key:
+                try:
+                    target_enabled = winreg.QueryValueEx(key, "TargetReleaseVersion")[0]
+                except FileNotFoundError:
+                    target_enabled = 0
+                try:
+                    product_version = winreg.QueryValueEx(key, "ProductVersion")[0]
+                except FileNotFoundError:
+                    product_version = ""
+                try:
+                    target_info = winreg.QueryValueEx(key, "TargetReleaseVersionInfo")[0]
+                except FileNotFoundError:
+                    target_info = ""
+                return target_enabled, product_version, target_info
+        except Exception:
+            return 0, "", ""
+
+    def update_target_tab_status(self):
+        product_name, display_version, current_build, ubr = self.get_windows_version_details()
+        
+        # Display current OS Info
+        self.lbl_current_os.config(text=f"Hệ điều hành hiện tại: {product_name} {display_version}")
+        self.lbl_current_build.config(text=f"Phiên bản build: {current_build}.{ubr}" if ubr else f"Phiên bản build: {current_build}")
+        
+        # Display current Target Registry Info
+        target_enabled, product_version, target_info = self.get_registry_target_release()
+        if target_enabled == 1 and product_version and target_info:
+            self.lbl_registry_target.config(text=f"Giới hạn Target hiện tại (Registry): {product_version} - {target_info}", foreground="#28a745")
+        else:
+            self.lbl_registry_target.config(text="Giới hạn Target hiện tại (Registry): Không giới hạn (Mặc định)", foreground=self.accent_color)
+            
+        # Default selection logic based on detected version
+        prod = "Windows 11" if "windows 11" in product_name.lower() else "Windows 10"
+        default_ver = f"{prod} {display_version}"
+        
+        matched_option = None
+        for opt in self.target_options:
+            if opt.lower() == default_ver.lower():
+                matched_option = opt
+                break
+                
+        # If registry has a limit, set combo to registry limit
+        if target_enabled == 1 and product_version and target_info:
+            reg_opt = f"{product_version} {target_info}"
+            for opt in self.target_options:
+                if opt.lower() == reg_opt.lower():
+                    matched_option = opt
+                    break
+                    
+        if matched_option:
+            self.target_combo_var.set(matched_option)
+        else:
+            self.target_combo_var.set(self.target_options[7]) # Default to Disable if not matched
+
+    def apply_target_release(self):
+        selected = self.target_combo_var.get()
+        if not selected or selected == "Disable Target Release (Không giới hạn)":
+            self.remove_target_release()
+            return
+            
+        parts = selected.split(" ")
+        if len(parts) < 3:
+            messagebox.showerror("Lỗi", "Lựa chọn không hợp lệ.")
+            return
+            
+        product_version = f"{parts[0]} {parts[1]}" # e.g. "Windows 10" or "Windows 11"
+        target_info = parts[2] # e.g. "21H2"
+        
+        # Build reg command to write settings to HKLM policies
+        cmd = (
+            f'reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate" /v "ProductVersion" /t REG_SZ /d "{product_version}" /f & '
+            f'reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate" /v "TargetReleaseVersion" /t REG_DWORD /d 1 /f & '
+            f'reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate" /v "TargetReleaseVersionInfo" /t REG_SZ /d "{target_info}" /f'
+        )
+        
+        # Run in cmd elevated via powershell with UAC Prompt (-Verb RunAs)
+        ps_cmd = f'Start-Process cmd -ArgumentList "/c {cmd}" -Verb RunAs -WindowStyle Hidden -Wait'
+        try:
+            subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], creationflags=subprocess.CREATE_NO_WINDOW)
+            
+            # Wait briefly and refresh status
+            time.sleep(0.5)
+            self.update_target_tab_status()
+            
+            # Verify if values were successfully written
+            target_enabled, current_prod, current_info = self.get_registry_target_release()
+            if target_enabled == 1 and current_prod == product_version and current_info == target_info:
+                messagebox.showinfo("Thành công", f"Đã áp dụng khóa target: {product_version} - {target_info}")
+            else:
+                messagebox.showwarning("Cảnh báo", "Không thể áp dụng thiết lập. Vui lòng đồng ý (Yes) khi Windows yêu cầu quyền Administrator.")
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"Không thể lưu thiết lập: {e}")
+
+    def remove_target_release(self):
+        # Build reg delete command for target policies
+        cmd = (
+            'reg delete "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate" /v "ProductVersion" /f & '
+            'reg delete "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate" /v "TargetReleaseVersion" /f & '
+            'reg delete "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate" /v "TargetReleaseVersionInfo" /f'
+        )
+        
+        # Run elevated with UAC Prompt
+        ps_cmd = f'Start-Process cmd -ArgumentList "/c {cmd}" -Verb RunAs -WindowStyle Hidden -Wait'
+        try:
+            subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], creationflags=subprocess.CREATE_NO_WINDOW)
+            
+            time.sleep(0.5)
+            self.update_target_tab_status()
+            
+            # Verify if successfully removed
+            target_enabled, _, _ = self.get_registry_target_release()
+            if target_enabled == 0:
+                messagebox.showinfo("Thành công", "Đã xóa khóa target thành công. Windows Update sẽ nâng cấp tự do.")
+            else:
+                messagebox.showwarning("Cảnh báo", "Không thể xóa thiết lập. Vui lòng đồng ý (Yes) khi Windows yêu cầu quyền Administrator.")
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"Lỗi khi xóa cấu hình Registry: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()
