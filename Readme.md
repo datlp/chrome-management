@@ -113,13 +113,14 @@ Bản cập nhật lớn tái cấu trúc giao diện và nâng cấp trải ngh
 
 ---
 
-## Hướng dẫn Cập nhật Phiên bản (Version Update & Release)
+# Hướng dẫn Cập nhật Phiên bản (Version Update & Release)
 
 Khi bạn thực hiện chỉnh sửa code và muốn cập nhật phiên bản mới lên GitHub, hãy thực hiện theo các bước sau:
 
 ### Bước 1: Build lại file `.exe` mới
 ```bash
 pyinstaller --noconsole --onefile chrome_profiles.py
+pyinstaller --noconsole --onefile windows_management.py
 ```
 
 ### Bước 2: Cập nhật Tag Git (Ví dụ lên v1.1.0)
@@ -143,6 +144,36 @@ git push origin v1.1.0
 ### Bước 3: Đẩy bản Release mới lên GitHub
 Sử dụng GitHub CLI để tạo/cập nhật release đính kèm file exe mới:
 ```bash
-gh release create v1.1.0 dist/chrome_profiles.exe --title "Release v1.1.0" --notes "Cập nhật các tính năng mới trong Changelog"
+gh release create v1.1.0 dist/chrome_profiles.exe dist/windows_management.exe --title "Release v1.1.0" --notes "Cập nhật các tính năng mới trong Changelog"
 ```
-*(Nếu Release đã tồn tại và bạn muốn cập nhật đè file exe vào release đó, thêm tham số `--overwrite` hoặc upload đè: `gh release upload v1.1.0 dist/chrome_profiles.exe --clobber`)*
+*(Nếu Release đã tồn tại và bạn muốn cập nhật đè file exe vào release đó, thêm tham số `--overwrite` hoặc upload đè: `gh release upload v1.1.0 dist/chrome_profiles.exe dist/windows_management.exe --clobber`)*
+
+---
+
+# Windows Debloat Manager
+
+Phần mềm quản lý và gỡ bỏ hàng loạt ứng dụng debloatware mặc định trên Windows (Appx Packages) với giao diện tối giản (Dark Mode) viết bằng Python & Tkinter, tham khảo từ file cấu hình của `windows-debloatware-apps.ps1`.
+
+## Hướng dẫn chạy thử
+Chạy trực tiếp ứng dụng bằng lệnh:
+```bash
+python windows_management.py
+```
+> [!IMPORTANT]
+> Để thực hiện gỡ cài đặt các gói hệ thống một cách hiệu quả nhất, bạn nên mở Terminal/PowerShell với quyền **Administrator** trước khi chạy.
+
+---
+
+## Nhật ký thay đổi (Changelog) - Phiên bản v1.2.0 (Windows Debloat Manager)
+- **Quản lý Debloat (Tab 1):**
+  - Tải danh sách mặc định gồm hơn 60+ ứng dụng debloatware phổ biến của Windows từ script PowerShell.
+  - Hỗ trợ lưu trữ danh sách cá nhân hóa trong thư mục người dùng (`%USERPROFILE%\dsoft\windows-debloat-management\windows_debloat_config.json`).
+  - Hỗ trợ thêm mới (`+ Thêm mới...`), chỉnh sửa trực tiếp (Inline Editing) kiểu khớp (Exact / Wildcard) và xóa gói khỏi danh sách.
+  - Quét kiểm tra trạng thái cài đặt thực tế của các gói Appx trên hệ thống một cách nhanh chóng qua luồng chạy ngầm PowerShell (không đơ UI).
+  - Hỗ trợ Import/Export cấu hình danh sách debloat qua file CSV.
+- **Get-AppxPackage Live System (Tab 2):**
+  - Quét trực tiếp toàn bộ các gói Appx đang được cài đặt trên máy tính mà không cần quyền Administrator.
+  - Chỉ hiển thị cột **Tên Gói** và **Package ID** để giao diện hiển thị gọn gàng, rõ ràng hơn.
+  - Hỗ trợ tìm kiếm và lọc thời gian thực (Real-time Filter) theo từ khóa.
+  - Chọn nhanh và thêm các gói tìm thấy vào danh sách Debloat ở Tab 1.
+  - Hỗ trợ gỡ cài đặt trực tiếp (Direct Uninstall) gói được chọn thông qua chạy ngầm lệnh `Remove-AppxPackage`.
