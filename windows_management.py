@@ -402,6 +402,18 @@ class WindowsDebloatManagerApp:
                                            font=("Segoe UI", 10, "bold"), padx=15, pady=6, command=self.remove_target_release)
         self.btn_remove_target.pack(side="left")
         
+        # Power Plan Optimization Card
+        power_card = ttk.Frame(self.target_container, style="Card.TFrame", padding=15)
+        power_card.pack(fill="x", pady=(15, 0))
+        
+        ttk.Label(power_card, text="Tối ưu hóa hiệu năng hệ thống:", style="Card.TLabel", font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0, 5))
+        ttk.Label(power_card, text="Kích hoạt chế độ nguồn hiệu năng tối đa (Ultimate Performance) cho Windows.", style="Card.TLabel").pack(anchor="w", pady=(0, 15))
+        
+        self.btn_enable_power = tk.Button(power_card, text="BẬT ULTIMATE PERFORMANCE POWER PLAN", bg="#e0a900", fg="#000000",
+                                          activebackground="#ffd600", activeforeground="#000000", relief="flat", bd=0,
+                                          font=("Segoe UI", 10, "bold"), padx=15, pady=6, command=self.enable_ultimate_performance)
+        self.btn_enable_power.pack(anchor="w")
+        
         # Initialize target status display
         self.update_target_tab_status()
 
@@ -1137,6 +1149,18 @@ class WindowsDebloatManagerApp:
                 messagebox.showwarning("Cảnh báo", "Không thể xóa thiết lập. Vui lòng đồng ý (Yes) khi Windows yêu cầu quyền Administrator.")
         except Exception as e:
             messagebox.showerror("Lỗi", f"Lỗi khi xóa cấu hình Registry: {e}")
+
+    def enable_ultimate_performance(self):
+        # Command to enable Ultimate Performance scheme directly
+        cmd = 'powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61'
+        
+        # Run elevated with UAC Prompt
+        ps_cmd = f'Start-Process cmd -ArgumentList "/c {cmd}" -Verb RunAs -WindowStyle Hidden -Wait'
+        try:
+            subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], creationflags=subprocess.CREATE_NO_WINDOW)
+            messagebox.showinfo("Thành công", "Đã kích hoạt Ultimate Performance Power Plan thành công.\n\nVui lòng kiểm tra và chọn plan này trong Control Panel -> Power Options.")
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"Không thể kích hoạt Ultimate Performance: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()

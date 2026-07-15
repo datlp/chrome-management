@@ -350,4 +350,6 @@ python windows_management.py
   - Cung cấp danh sách giới hạn các phiên bản từ Windows 10 21H2 đến Windows 11 26H2.
   - Tự động gợi ý mặc định theo phiên bản Windows hiện tại của máy để dễ dàng khóa tại chỗ.
   - Hỗ trợ ghi đè Registry (`ProductVersion`, `TargetReleaseVersionInfo`, `TargetReleaseVersion`) hoặc xóa bỏ giới hạn trực tiếp từ giao diện thông qua kích hoạt hộp thoại UAC tự động (không bắt buộc chạy ứng dụng dưới quyền Admin).
+  - **Tối ưu hóa hiệu năng**: Bổ sung nút bấm **Kích hoạt Ultimate Performance Power Plan** chạy ngầm câu lệnh `powercfg` với quyền quản trị UAC để mở khóa gói điện năng tối đa của Windows.
+
 
