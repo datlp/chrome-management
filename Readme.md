@@ -187,34 +187,19 @@ python chrome_profiles.py
 
 ## Hướng dẫn Build thành file thực thi (.exe)
 
-Để đóng gói mã nguồn Python thành file `.exe` chạy độc lập trên Windows (không cần máy cài Python), chúng ta sử dụng công cụ `PyInstaller`.
+Dự án đã tích hợp sẵn một script build tự động giúp cài đặt PyInstaller và đóng gói cả hai ứng dụng (`chrome_profiles.py` và `windows_management.py`) thành các file `.exe` chạy độc lập, đồng thời dọn dẹp các tệp tin tạm thừa.
 
-### Bước 1: Cài đặt PyInstaller
-Mở Command Prompt (cmd) hoặc PowerShell và chạy lệnh sau để cài đặt:
+### Chạy lệnh Build tự động:
+Mở CMD hoặc PowerShell tại thư mục dự án và chạy:
 ```bash
-pip install pyinstaller
+python build.py
 ```
 
-### Bước 2: Build ứng dụng
-Chạy lệnh bên dưới để đóng gói file `chrome_profiles.py` thành một file `.exe` duy nhất:
-```bash
-pyinstaller --noconsole --onefile chrome_profiles.py
-```
+### Cách thức hoạt động:
+1. Tự động kiểm tra và cài đặt `pyinstaller` nếu máy bạn chưa có.
+2. Build song song cả hai file thành `dist/chrome_profiles.exe` và `dist/windows_management.exe`.
+3. Tự động xóa thư mục tạm `build/` và các file `.spec` sau khi hoàn thành.
 
-Trong đó:
-- `--onefile`: Đóng gói tất cả tài nguyên và mã nguồn vào duy nhất một file `.exe`.
-- `--noconsole`: Ẩn cửa sổ dòng lệnh màu đen khi chạy ứng dụng (chỉ hiển thị giao diện đồ họa GUI).
-
-*(Tùy chọn) Nếu bạn có file icon (.ico) riêng và muốn đổi icon cho file exe:*
-```bash
-pyinstaller --noconsole --onefile --icon=your_icon.ico chrome_profiles.py
-```
-
-### Bước 3: Nhận kết quả
-Sau khi PyInstaller chạy hoàn tất thành công:
-1. File `.exe` thành phẩm sẽ nằm trong thư mục **`dist/`** mới được tạo ra:
-   - Đường dẫn: `dist/chrome_profiles.exe`
-2. Bạn có thể copy file `chrome_profiles.exe` này đi bất cứ máy tính Windows nào khác để chạy trực tiếp.
 3. Các thư mục trung gian như `build/` và file `chrome_profiles.spec` có thể được xóa đi nếu không dùng tới.
 
 ---
